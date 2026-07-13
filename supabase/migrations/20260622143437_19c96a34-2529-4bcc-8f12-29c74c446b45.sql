@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "authenticated read logos" ON storage.objects;

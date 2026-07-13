@@ -1,0 +1,398 @@
+import { supabase } from "@/integrations/supabase/client";
+import {
+  sendMessageAction,
+  editMessageAction,
+  deleteMessageAction,
+  updateProfileAction,
+  getOrCreateConversationAction,
+  toggleReactionAction,
+  toggleStarAction,
+  forwardMessageAction,
+} from "./actions";
+
+export type Profile = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  department: string | null;
+  designation: string | null;
+  is_online: boolean;
+  last_seen: string;
+};
+
+export type Message = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string | null;
+  message_type: "text" | "file" | "image";
+  file_url: string | null;
+  file_name: string | null;
+  file_size: number | null;
+  file_mime: string | null;
+  reply_to: string | null;
+  edited_at: string | null;
+  deleted_at: string | null;
+  created_at: string;
+};
+
+export type Reaction = {
+  id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+};
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  kind: "message" | "reaction" | string;
+  conversation_id: string | null;
+  message_id: string | null;
+  actor_id: string | null;
+  preview: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
+export type ConversationSummary = {
+  id: string;
+  last_message_at: string;
+  other: Profile;
+  last_message: Message | null;
+  unread_count: number;
+};
+
+const ATTACHMENTS_BUCKET = "chat-attachments";
+
+/* -------------------- Profiles / directory -------------------- */
+
+export async function fetchDirectory(currentUserId: string): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .neq("id", currentUserId)
+    .order("full_name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Profile[];
+}
+
+export async function fetchMyProfile(userId: string): Promise<Profile | null> {
+  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+  if (error) throw error;
+  return (data as Profile) ?? null;
+}
+
+export async function updateMyProfile(userId: string, patch: Partial<Profile>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Unauthorized: Session expired.");
+  await updateProfileAction({
+    token,
+    fullName: patch.full_name,
+    department: patch.department,
+    designation: patch.designation,
+    avatarUrl: patch.avatar_url,
+  });
+}
+
+/* -------------------- Conversations -------------------- */
+
+export async function fetchConversations(userId: string): Promise<ConversationSummary[]> {
+  const { data: parts, error: partsErr } = await supabase
+    .from("conversation_participants")
+    .select("conversation_id, conversations!inner(id, last_message_at)")
+    .eq("user_id", userId);
+  if (partsErr) throw partsErr;
+  const convIds = (parts ?? []).map((p) => p.conversation_id);
+  if (convIds.length === 0) return [];
+
+  const { data: allParts, error: allPartsErr } = await supabase
+    .from("conversation_participants")
+    .select("conversation_id, user_id")
+    .in("conversation_id", convIds);
+  if (allPartsErr) throw allPartsErr;
+
+  const otherIds = Array.from(
+    new Set((allParts ?? []).filter((p) => p.user_id !== userId).map((p) => p.user_id)),
+  );
+
+  const { data: profiles, error: profErr } = await supabase
+    .from("profiles")
+    .select("*")
+    .in("id", otherIds.length ? otherIds : ["00000000-0000-0000-0000-000000000000"]);
+  if (profErr) throw profErr;
+  const profileMap = new Map<string, Profile>((profiles ?? []).map((p) => [p.id, p as Profile]));
+
+  const { data: msgs, error: msgErr } = await supabase
+    .from("messages")
+    .select("*")
+    .in("conversation_id", convIds)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (msgErr) throw msgErr;
+
+  const lastByConv = new Map<string, Message>();
+  for (const m of (msgs ?? []) as Message[]) {
+    if (!lastByConv.has(m.conversation_id)) lastByConv.set(m.conversation_id, m);
+  }
+
+  const { data: reads } = await supabase.from("message_reads").select("message_id").eq("user_id", userId);
+  const readSet = new Set((reads ?? []).map((r) => r.message_id));
+
+  const summaries: ConversationSummary[] = [];
+  for (const p of parts ?? []) {
+    const cid = p.conversation_id;
+    const otherPart = (allParts ?? []).find((x) => x.conversation_id === cid && x.user_id !== userId);
+    const other = otherPart ? profileMap.get(otherPart.user_id) : undefined;
+    if (!other) continue;
+    const unread = ((msgs ?? []) as Message[]).filter(
+      (m) => m.conversation_id === cid && m.sender_id !== userId && !readSet.has(m.id),
+    ).length;
+    summaries.push({
+      id: cid,
+      last_message_at: p.conversations?.last_message_at ?? new Date(0).toISOString(),
+      other,
+      last_message: lastByConv.get(cid) ?? null,
+      unread_count: unread,
+    });
+  }
+  summaries.sort((a, b) => (a.last_message_at < b.last_message_at ? 1 : -1));
+  return summaries;
+}
+
+export async function getOrCreateConversation(_currentUserId: string, otherUserId: string): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Unauthorized: Session expired.");
+  const res = await getOrCreateConversationAction({
+    data: {
+      token,
+      otherUserId,
+    },
+  });
+  return res.conversationId;
+}
+
+/* -------------------- Messages -------------------- */
+
+export async function fetchMessages(conversationId: string): Promise<Message[]> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+    .limit(500);
+  if (error) throw error;
+  return (data ?? []) as Message[];
+}
+
+export async function sendMessage(conversationId: string, senderId: string, content: string, replyTo?: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Unauthorized: Session expired.");
+  await sendMessageAction({
+    data: {
+      token,
+      conversationId,
+      content,
+      replyTo: replyTo ?? null,
+    },
+  });
+}
+
+export async function editMessage(id: string, content: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Unauthorized: Session expired.");
+  await editMessageAction({ token, messageId: id, content });
+}
+
+export async function deleteMessage(id: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Unauthorized: Session expired.");
+  await deleteMessageAction({ token, messageId: id });
+}
+
+export async function markRead(messageIds: string[], userId: string) {
+  if (!messageIds.length) return;
+  const rows = messageIds.map((message_id) => ({ message_id, user_id: userId }));
+  await supabase.from("message_reads").upsert(rows, { onConflict: "message_id,user_id", ignoreDuplicates: true });
+}
+
+export async function pingPresence(userId: string, online: boolean) {
+  await supabase
+    .from("profiles")
+    .update({ is_online: online, last_seen: new Date().toISOString() })
+    .eq("id", userId);
+}
+
+/* -------------------- File attachments -------------------- */
+
+export type UploadedFile = { path: string; name: string; size: number; mime: string };
+
+export async function uploadAttachment(
+  conversationId: string,
+  senderId: string,
+  file: File,
+): Promise<UploadedFile> {
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const key = `${conversationId}/${senderId}/${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .upload(key, file, { contentType: file.type || "application/octet-stream", upsert: false });
+  if (error) throw error;
+  return { path: key, name: file.name, size: file.size, mime: file.type || "application/octet-stream" };
+}
+
+export async function sendFileMessage(
+  conversationId: string,
+  senderId: string,
+  upload: UploadedFile,
+  caption?: string,
+  replyTo?: string,
+) {
+  const type = upload.mime.startsWith("image/") ? "image" : "file";
+  const { error } = await supabase.from("messages").insert({
+    conversation_id: conversationId,
+    sender_id: senderId,
+    content: caption?.trim() || null,
+    message_type: type,
+    file_url: upload.path,
+    file_name: upload.name,
+    file_size: upload.size,
+    file_mime: upload.mime,
+    reply_to: replyTo ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function getAttachmentUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .createSignedUrl(path, 60 * 60);
+  if (error) throw error;
+  return data?.signedUrl ?? "";
+}
+
+/* -------------------- Reactions -------------------- */
+
+export async function fetchReactionsForConversation(conversationId: string): Promise<Reaction[]> {
+  const { data, error } = await supabase
+    .from("message_reactions")
+    .select("id, message_id, user_id, emoji, created_at, messages!inner(conversation_id)")
+    .eq("messages.conversation_id", conversationId);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id, message_id: r.message_id, user_id: r.user_id, emoji: r.emoji, created_at: r.created_at,
+  })) as Reaction[];
+}
+
+export async function toggleReaction(messageId: string, userId: string, emoji: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Unauthorized: Session expired.");
+  await toggleReactionAction({ token, messageId, emoji });
+}
+
+/* -------------------- Starred -------------------- */
+
+export async function fetchStarredIds(userId: string): Promise<Set<string>> {
+  const { data } = await supabase.from("starred_messages").select("message_id").eq("user_id", userId);
+  return new Set((data ?? []).map((r) => r.message_id));
+}
+
+export async function fetchStarredMessages(userId: string): Promise<Message[]> {
+  const { data } = await supabase
+    .from("starred_messages")
+    .select("message_id, created_at, messages!inner(*)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  return ((data ?? []).map((r) => r.messages).filter(Boolean)) as unknown as Message[];
+}
+
+export async function toggleStar(messageId: string, userId: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Unauthorized: Session expired.");
+  await toggleStarAction({ token, messageId });
+}
+
+/* -------------------- Forward -------------------- */
+
+export async function forwardMessage(target: Message, toConversationId: string, senderId: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("Unauthorized: Session expired.");
+  await forwardMessageAction({ token, messageId: target.id, toConversationId });
+}
+
+/* -------------------- Global search -------------------- */
+
+export type SearchResults = {
+  users: Profile[];
+  messages: Message[];
+  files: Message[];
+};
+
+export async function searchEverything(userId: string, q: string): Promise<SearchResults> {
+  const term = `%${q.replace(/[%_]/g, "\\$&")}%`;
+  const [usersRes, msgsRes, filesRes] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .neq("id", userId)
+      .or(
+        `full_name.ilike.${term},email.ilike.${term},department.ilike.${term},designation.ilike.${term}`,
+      )
+      .limit(20),
+    supabase
+      .from("messages")
+      .select("*")
+      .is("deleted_at", null)
+      .ilike("content", term)
+      .order("created_at", { ascending: false })
+      .limit(30),
+    supabase
+      .from("messages")
+      .select("*")
+      .in("message_type", ["file", "image"])
+      .ilike("file_name", term)
+      .order("created_at", { ascending: false })
+      .limit(30),
+  ]);
+  return {
+    users: (usersRes.data ?? []) as Profile[],
+    messages: (msgsRes.data ?? []) as Message[],
+    files: (filesRes.data ?? []) as Message[],
+  };
+}
+
+/* -------------------- Notifications -------------------- */
+
+export async function fetchNotifications(userId: string, limit = 30): Promise<Notification[]> {
+  const { data } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as Notification[];
+}
+
+export async function markAllNotificationsRead(userId: string) {
+  await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .is("read_at", null);
+}
+
+export async function clearNotification(id: string) {
+  await supabase.from("notifications").delete().eq("id", id);
+}
+

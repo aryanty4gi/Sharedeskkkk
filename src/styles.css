@@ -1,0 +1,131 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Industrial Precision design system — warm off-white canvas, deep ink, signature orange. */
+
+@theme inline {
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-positive: var(--positive);
+
+  --shadow-card: 0 1px 0 rgba(0,0,0,0.02), 0 8px 24px -16px rgba(18,18,17,0.08);
+  --shadow-lift: 0 1px 0 rgba(0,0,0,0.04), 0 16px 48px -20px rgba(18,18,17,0.16);
+  --shadow-primary: 0 8px 24px -8px color-mix(in oklab, var(--primary) 40%, transparent);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #FBFBF9;
+  --foreground: #222222;
+  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --card-foreground: #222222;
+  --popover: #FFFFFF;
+  --popover-foreground: #222222;
+  --primary: #3B6FA0;
+  --primary-foreground: #FBFBF9;
+  --secondary: #E6E2DB;
+  --secondary-foreground: #222222;
+  --muted: #E6E2DB;
+  --muted-foreground: #6B6B6B;
+  --accent: #E6E2DB;
+  --accent-foreground: #222222;
+  --destructive: #D94E3B;
+  --destructive-foreground: #FBFBF9;
+  --border: #E6E2DB;
+  --input: #E6E2DB;
+  --ring: #3B6FA0;
+  --positive: #2DD4A8;
+  --metric-accent: #3B6FA0;
+  --gradient-results: radial-gradient(120% 80% at 0% 0%, #3b6fa0 0%, #203f5d 45%, #102030 100%);
+  --gradient-primary: linear-gradient(135deg, #3B6FA0 0%, #203f5d 100%);
+}
+
+.dark {
+  --background: #121212;
+  --foreground: #F5F5F5;
+  --surface: #1A1A1A;
+  --card: #1A1A1A;
+  --card-foreground: #F5F5F5;
+  --popover: #1A1A1A;
+  --popover-foreground: #F5F5F5;
+  --primary: #3B6FA0;
+  --primary-foreground: #F5F5F5;
+  --secondary: #2C2C2C;
+  --secondary-foreground: #F5F5F5;
+  --muted: #2C2C2C;
+  --muted-foreground: #A0A0A0;
+  --accent: #2C2C2C;
+  --accent-foreground: #F5F5F5;
+  --destructive: #D94E3B;
+  --destructive-foreground: #F5F5F5;
+  --border: #2C2C2C;
+  --input: #2C2C2C;
+  --ring: #3B6FA0;
+  --positive: #2DD4A8;
+  --metric-accent: #3B6FA0;
+  --gradient-results: radial-gradient(120% 80% at 0% 0%, #3B6FA0 0%, #203f5d 45%, #102030 100%);
+  --gradient-primary: linear-gradient(135deg, #3B6FA0 0%, #203f5d 100%);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html { font-family: var(--font-sans); }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: color-mix(in oklab, var(--primary) 20%, transparent); }
+}
+
+@layer utilities {
+  .font-mono { font-family: var(--font-mono); }
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+  .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--foreground) 12%, transparent);
+    border-radius: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--foreground) 24%, transparent);
+  }
+  .grain::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(0,0,0,0.025) 1px, transparent 1px);
+    background-size: 3px 3px; mix-blend-mode: multiply;
+  }
+}

@@ -1,0 +1,2 @@
+CREATE POLICY "authenticated read logos" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'logos');
+CREATE POLICY "public read logos" ON storage.objects FOR SELECT TO anon USING (bucket_id = 'logos');
