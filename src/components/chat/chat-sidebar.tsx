@@ -136,7 +136,7 @@ export function ChatSidebar({ userId }: { userId: string }) {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search conversationsâ€¦"
+            placeholder="Search conversations..."
             className="h-9 border-transparent bg-muted/60 pl-8 text-sm focus-visible:bg-card focus-visible:border-border"
           />
         </div>
@@ -183,7 +183,7 @@ export function ChatSidebar({ userId }: { userId: string }) {
       {/* List */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {isLoading ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">Loadingâ€¦</div>
+          <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
         ) : filtered.length === 0 ? (
           <EmptyState onNewChat={() => setNewOpen(true)} hasAny={convos.length > 0} />
         ) : (

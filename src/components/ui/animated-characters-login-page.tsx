@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -377,33 +377,38 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-[#FBFBF9] text-[#222222]">
-      {/* Left Content Section */}
-      <div className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#164B91_0%,#082E63_42%,#041B3D_75%,#03132C_100%)] p-12 text-[#FBFBF9]">
-        <div className="relative z-20">
-          <div className="flex items-center gap-4">
-            <ShareDeskLogo />
-            <div>
-              <div className="text-xl font-bold tracking-tight">
-                Share<span className="text-white/75">Desk</span>
-              </div>
-              <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.34em] text-white/60">
-                Workplace
+    <div className="flex flex-col min-h-[100dvh] bg-[#FBFBF9] text-[#222222] lg:grid lg:grid-cols-2 lg:h-screen lg:min-h-0 lg:overflow-hidden">
+      {/* Left Content Section / Hero Section on Mobile/Tablet */}
+      <div className="relative flex flex-col justify-between overflow-hidden bg-[radial-gradient(circle_at_50%_45%,#164B91_0%,#082E63_42%,#041B3D_75%,#03132C_100%)] text-[#FBFBF9] p-6 sm:p-8 lg:p-8 xl:p-12 w-full shrink-0 lg:shrink lg:h-full">
+        <div className="relative z-20 w-full max-w-[520px] lg:max-w-none mx-auto lg:mx-0">
+          <div className="flex items-center justify-between lg:justify-start gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <ShareDeskLogo />
+              <div>
+                <div className="text-lg sm:text-xl font-bold tracking-tight">
+                  Share<span className="text-white/75">Desk</span>
+                </div>
+                <div className="mt-0.5 text-[8px] sm:text-[9px] font-semibold uppercase tracking-[0.34em] text-white/60">
+                  Workplace
+                </div>
               </div>
             </div>
-            <div className="ml-3 hidden border-l border-white/25 pl-5 xl:block">
-              <p className="text-sm font-medium text-white/85">Connect. Collaborate.</p>
-              <p className="text-sm text-white/60">Achieve more together.</p>
+            <div className="border-l border-white/20 pl-4 sm:pl-5 text-left block lg:ml-3 lg:border-white/25">
+              <p className="text-xs sm:text-sm font-medium text-white/85">Connect. Collaborate.</p>
+              <p className="text-[10px] sm:text-sm text-white/60">Achieve more together.</p>
             </div>
           </div>
         </div>
 
-        <div className="relative z-20 flex items-end justify-center h-[500px]">
-          <div className="pointer-events-none absolute left-1/2 top-1/2 size-[430px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#2684FF]/35 shadow-[0_0_80px_rgba(38,132,255,0.22)]" />
-          <div className="pointer-events-none absolute left-1/2 top-[52%] size-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#6C3FF5]/25" />
-          <div className="pointer-events-none absolute left-1/2 top-[52%] size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#125DCC]/20 blur-3xl" />
+        <div className="relative z-20 flex items-end justify-center h-[180px] sm:h-[270px] lg:h-[380px] xl:h-[440px] 2xl:h-[500px] overflow-hidden mt-4 sm:mt-6 lg:mt-0">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 size-[180px] sm:size-[280px] lg:size-[330px] xl:size-[380px] 2xl:size-[430px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#2684FF]/35 shadow-[0_0_80px_rgba(38,132,255,0.22)]" />
+          <div className="pointer-events-none absolute left-1/2 top-[52%] size-[140px] sm:size-[220px] lg:size-[250px] xl:size-[290px] 2xl:size-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#6C3FF5]/25" />
+          <div className="pointer-events-none absolute left-1/2 top-[52%] size-24 sm:size-48 lg:size-56 xl:size-64 2xl:size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#125DCC]/20 blur-3xl" />
           {/* Cartoon Characters */}
-          <div className="relative" style={{ width: '550px', height: '400px' }}>
+          <div 
+            className="relative origin-bottom scale-[0.4] sm:scale-[0.6] lg:scale-[0.75] xl:scale-[0.88] 2xl:scale-100 transition-transform duration-300"
+            style={{ width: '550px', height: '400px' }}
+          >
             {/* Purple tall rectangle character - Back layer */}
             <div 
               ref={purpleRef}
@@ -572,7 +577,7 @@ export function LoginPage() {
           </div>
         </div>
 
-        <div className="relative z-20 grid grid-cols-3 gap-3">
+        <div className="relative z-20 hidden lg:grid grid-cols-3 gap-3">
           <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-md shadow-[0_14px_35px_-20px_rgba(0,0,0,0.8)]">
             <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-[#126BFF] shadow-[0_0_20px_rgba(18,107,255,0.35)]">
               <Shield className="size-5 text-white" />
@@ -598,7 +603,7 @@ export function LoginPage() {
           </div>
         </div>
 
-        <div className="relative z-20 flex items-center gap-8 text-sm text-[#FBFBF9]/60">
+        <div className="relative z-20 hidden lg:flex items-center gap-8 text-sm text-[#FBFBF9]/60">
           <a href="#" className="hover:text-white transition-colors">
             Privacy Policy
           </a>
@@ -617,19 +622,11 @@ export function LoginPage() {
       </div>
 
       {/* Right Login Section */}
-      <div className="relative flex items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_100%_0%,rgba(59,111,160,0.10),transparent_28%),radial-gradient(circle_at_0%_100%,rgba(108,63,245,0.07),transparent_25%),#FBFBF9] p-8">
-        <div className="w-full max-w-[420px]">
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center justify-center gap-2 text-lg font-semibold mb-12">
-            <div className="size-8 rounded-lg bg-[#3B6FA0]/10 flex items-center justify-center">
-              <Sparkles className="size-4 text-[#3B6FA0]" />
-            </div>
-            <span>ShareDesk Workplace</span>
-          </div>
-
+      <div className="relative flex flex-col overflow-x-hidden bg-[radial-gradient(circle_at_100%_0%,rgba(59,111,160,0.10),transparent_28%),radial-gradient(circle_at_0%_100%,rgba(108,63,245,0.07),transparent_25%),#FBFBF9] w-full flex-1 justify-center items-center p-4 sm:p-8 lg:min-h-0 lg:items-center lg:justify-center lg:p-8 lg:h-full lg:overflow-y-auto">
+        <div className="w-full max-w-[420px] py-6 sm:py-8 lg:py-6 xl:py-10">
           {/* Header */}
-          <div className="text-center mb-10">
-            <h1 className="text-4xl font-extrabold tracking-[-0.035em] mb-3 text-[#222222]">
+          <div className="mb-6 text-center sm:mb-8 lg:mb-10 xl:mb-12">
+            <h1 className="mb-2 text-2xl font-extrabold tracking-[-0.035em] text-[#222222] sm:mb-3 sm:text-3xl lg:text-4xl">
               {mode === "signin" ? "Welcome back! 👋" : "Join your team"}
             </h1>
             <p className="text-muted-foreground text-sm">
@@ -638,7 +635,7 @@ export function LoginPage() {
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
             {mode === "signup" && (
               <div className="space-y-2">
                 <Label htmlFor="fullName" className="text-sm font-medium">Full Name</Label>
@@ -704,7 +701,7 @@ export function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col items-start gap-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
               <div className="flex items-center space-x-2">
                 <Checkbox id="remember" className="rounded border-[#E6E2DB]" />
                 <Label
@@ -747,7 +744,7 @@ export function LoginPage() {
           </form>
 
           {/* Social Login */}
-          <div className="mt-6">
+          <div className="mt-6 xl:mt-8">
             <Button 
               variant="outline" 
               className="w-full h-12 bg-white border-[#E6E2DB] hover:bg-accent rounded-xl cursor-pointer"
@@ -761,7 +758,7 @@ export function LoginPage() {
           </div>
 
           {/* Sign Up / Sign In toggle Link */}
-          <div className="text-center text-sm text-muted-foreground mt-8">
+          <div className="mt-6 text-center text-sm text-muted-foreground sm:mt-8 xl:mt-10">
             {mode === "signin" ? (
               <>
                 Don't have an account?{" "}
@@ -787,8 +784,8 @@ export function LoginPage() {
             )}
           </div>
 
-          <p className="mt-8 flex items-center justify-center gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
-            <Shield className="size-3" />
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-muted-foreground sm:mt-8 xl:mt-10">
+            <Shield className="size-3 shrink-0" />
             Enterprise-grade encryption. Nuberg employees only.
           </p>
         </div>
