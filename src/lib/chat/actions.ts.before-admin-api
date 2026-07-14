@@ -93,7 +93,7 @@ export const updateProfileAction = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({
     token: z.string(),
     fullName: z.string().min(1).optional().nullable(),
-    employeeCode: z.string().max(80).optional().nullable(),
+
     avatarUrl: z.string().optional().nullable(),
   }).parse(d))
   .handler(async ({ data }) => {
@@ -103,7 +103,6 @@ export const updateProfileAction = createServerFn({ method: "POST" })
       .from("profiles")
       .update({
         full_name: data.fullName,
-        employee_id: data.employeeCode,
         avatar_url: data.avatarUrl,
         updated_at: new Date().toISOString(),
       })
@@ -260,94 +259,3 @@ export const forwardMessageAction = createServerFn({ method: "POST" })
     return { success: true };
   });
 
-
-/* -------------------- Admin Management -------------------- */
-
-export const adminUpdateEmployeeAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    targetUserId: z.string().uuid(),
-    department: z.string(),
-    designation: z.string(),
-    managerId: z.string().uuid().nullable(),
-  }).parse(d))
-  .handler(async ({ data }) => {
-    const { client } = await getAuthenticatedClient(data.token);
-
-    const { error } = await client.rpc("admin_update_employee", {
-      target_user_id: data.targetUserId,
-      new_department: data.department,
-      new_designation: data.designation,
-      new_manager_id: data.managerId ?? undefined,
-    });
-
-    if (error) throw new Error(error.message);
-
-    return { success: true };
-  });
-
-export const adminUpdateUserRoleAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    targetUserId: z.string().uuid(),
-    role: z.enum([
-      "super_admin",
-      "hr_admin",
-      "department_head",
-      "manager",
-      "employee",
-    ]),
-  }).parse(d))
-  .handler(async ({ data }) => {
-    const { client } = await getAuthenticatedClient(data.token);
-
-    const { error } = await client.rpc("admin_update_user_role", {
-      target_user_id: data.targetUserId,
-      new_role: data.role,
-    });
-
-    if (error) throw new Error(error.message);
-
-    return { success: true };
-  });
-export const adminDeleteUserAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    targetUserId: z.string().uuid(),
-  }).parse(d))
-  .handler(async ({ data }) => {
-    const { client, user } = await getAuthenticatedClient(data.token);
-
-    if (user.id === data.targetUserId) {
-      throw new Error("You cannot delete your own Super Admin account.");
-    }
-
-    // SECURITY: Verify the requesting user is actually a Super Admin.
-    const { data: requesterRole, error: roleError } = await client
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (roleError) {
-      throw new Error("Unable to verify administrator permissions.");
-    }
-
-    if (requesterRole?.role !== "super_admin") {
-      throw new Error("Forbidden: Only Super Admin can delete employees.");
-    }
-
-    // Load service-role client only inside the trusted server handler.
-    const { supabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
-
-    const { error: deleteError } =
-      await supabaseAdmin.auth.admin.deleteUser(data.targetUserId);
-
-    if (deleteError) {
-      throw new Error(deleteError.message);
-    }
-
-    return { success: true };
-  });

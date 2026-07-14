@@ -2,6 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/chat/format";
 import type { Profile } from "@/lib/chat/queries";
 import { cn } from "@/lib/utils";
+import { useProfileAvatarUrl } from "@/lib/chat/use-signed-url";
 
 export function UserAvatar({
   profile,
@@ -14,11 +15,12 @@ export function UserAvatar({
   showStatus?: boolean;
   className?: string;
 }) {
+  const avatarUrl = useProfileAvatarUrl(profile.avatar_url);
   const sizes = { sm: "size-7 text-[10px]", md: "size-9 text-xs", lg: "size-11 text-sm", xl: "size-16 text-base" };
   return (
     <div className={cn("relative", className)}>
       <Avatar className={sizes[size]}>
-        {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.full_name ?? profile.email} />}
+        {avatarUrl && <AvatarImage src={avatarUrl} alt={profile.full_name ?? profile.email} />}
         <AvatarFallback className="bg-primary/10 font-semibold text-primary">
           {initials(profile.full_name, profile.email)}
         </AvatarFallback>

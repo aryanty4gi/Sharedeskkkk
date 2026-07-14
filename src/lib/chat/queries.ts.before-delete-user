@@ -10,7 +10,6 @@ import {
   forwardMessageAction,
   adminUpdateEmployeeAction,
   adminUpdateUserRoleAction,
-  adminDeleteUserAction,
 } from "./actions";
 
 export type Profile = {
@@ -517,24 +516,6 @@ export async function adminUpdateUserRole(
       token,
       targetUserId,
       role,
-    },
-  });
-}
-export async function adminDeleteUser(targetUserId: string) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const token = session?.access_token;
-
-  if (!token) {
-    throw new Error("Unauthorized: Session expired.");
-  }
-
-  await adminDeleteUserAction({
-    data: {
-      token,
-      targetUserId,
     },
   });
 }

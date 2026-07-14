@@ -12,8 +12,84 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
@@ -125,6 +201,77 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      department_documents: {
+        Row: {
+          created_at: string
+          department: string
+          description: string | null
+          file_mime: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          description?: string | null
+          file_mime?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          description?: string | null
+          file_mime?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       message_reactions: {
         Row: {
@@ -305,10 +452,13 @@ export type Database = {
           department: string | null
           designation: string | null
           email: string
+          employee_id: string | null
           full_name: string | null
           id: string
           is_online: boolean
+          last_login: string | null
           last_seen: string
+          manager_id: string | null
           updated_at: string
         }
         Insert: {
@@ -317,10 +467,13 @@ export type Database = {
           department?: string | null
           designation?: string | null
           email: string
+          employee_id?: string | null
           full_name?: string | null
           id: string
           is_online?: boolean
+          last_login?: string | null
           last_seen?: string
+          manager_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -329,13 +482,24 @@ export type Database = {
           department?: string | null
           designation?: string | null
           email?: string
+          employee_id?: string | null
           full_name?: string | null
           id?: string
           is_online?: boolean
+          last_login?: string | null
           last_seen?: string
+          manager_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_templates: {
         Row: {
@@ -488,6 +652,35 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_settings: {
         Row: {
           brand_logo_url: string | null
@@ -541,6 +734,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_employee: {
+        Args: {
+          new_department: string
+          new_designation: string
+          new_manager_id?: string
+          target_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_update_user_role: {
+        Args: { new_role: string; target_user_id: string }
+        Returns: undefined
+      }
+      is_company_admin: { Args: { check_user_id?: string }; Returns: boolean }
       is_conversation_participant: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
@@ -673,6 +880,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

@@ -8,9 +8,6 @@ import {
   toggleReactionAction,
   toggleStarAction,
   forwardMessageAction,
-  adminUpdateEmployeeAction,
-  adminUpdateUserRoleAction,
-  adminDeleteUserAction,
 } from "./actions";
 
 export type Profile = {
@@ -20,11 +17,6 @@ export type Profile = {
   avatar_url: string | null;
   department: string | null;
   designation: string | null;
-  employee_id: string | null;
-  manager_id: string | null;
-  last_login: string | null;
-  created_at: string;
-  updated_at: string;
   is_online: boolean;
   last_seen: string;
 };
@@ -101,7 +93,8 @@ export async function updateMyProfile(userId: string, patch: Partial<Profile>) {
     data: {
       token,
       fullName: patch.full_name,
-      employeeCode: patch.employee_id,
+      department: patch.department,
+      designation: patch.designation,
       avatarUrl: patch.avatar_url,
     },
   });
@@ -371,7 +364,7 @@ export async function searchEverything(userId: string, q: string): Promise<Searc
       .select("*")
       .neq("id", userId)
       .or(
-        `full_name.ilike.${term},email.ilike.${term},employee_id.ilike.${term},department.ilike.${term},designation.ilike.${term}`,
+        `full_name.ilike.${term},email.ilike.${term},department.ilike.${term},designation.ilike.${term}`,
       )
       .limit(20),
     supabase
@@ -421,120 +414,3 @@ export async function clearNotification(id: string) {
 }
 
 
-
-/* -------------------- Admin Management -------------------- */
-
-export type CompanyRole =
-  | "super_admin"
-  | "hr_admin"
-  | "department_head"
-  | "manager"
-  | "employee";
-
-export type AdminUser = Profile & {
-  role: CompanyRole;
-};
-
-export async function fetchCurrentUserRole(userId: string): Promise<CompanyRole> {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .single();
-
-  if (error) throw error;
-
-  return data.role as CompanyRole;
-}
-
-export async function fetchAdminUsers(): Promise<AdminUser[]> {
-  const { data: profiles, error: profilesError } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("full_name", { ascending: true });
-
-  if (profilesError) throw profilesError;
-
-  const { data: roles, error: rolesError } = await supabase
-    .from("user_roles")
-    .select("user_id, role");
-
-  if (rolesError) throw rolesError;
-
-  const roleMap = new Map(
-    (roles ?? []).map((item) => [
-      item.user_id,
-      item.role as CompanyRole,
-    ]),
-  );
-
-  return (profiles ?? []).map((profile) => ({
-    ...(profile as Profile),
-    role: roleMap.get(profile.id) ?? "employee",
-  }));
-}
-
-export async function adminUpdateEmployee(input: {
-  targetUserId: string;
-  department: string;
-  designation: string;
-  managerId: string | null;
-}) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const token = session?.access_token;
-
-  if (!token) {
-    throw new Error("Unauthorized: Session expired.");
-  }
-
-  await adminUpdateEmployeeAction({
-    data: {
-      token,
-      ...input,
-    },
-  });
-}
-
-export async function adminUpdateUserRole(
-  targetUserId: string,
-  role: CompanyRole,
-) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const token = session?.access_token;
-
-  if (!token) {
-    throw new Error("Unauthorized: Session expired.");
-  }
-
-  await adminUpdateUserRoleAction({
-    data: {
-      token,
-      targetUserId,
-      role,
-    },
-  });
-}
-export async function adminDeleteUser(targetUserId: string) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const token = session?.access_token;
-
-  if (!token) {
-    throw new Error("Unauthorized: Session expired.");
-  }
-
-  await adminDeleteUserAction({
-    data: {
-      token,
-      targetUserId,
-    },
-  });
-}

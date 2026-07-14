@@ -23,7 +23,6 @@ export function ProfileDialog({
   const [fullName, setFullName] = useState("");
   const [department, setDepartment] = useState("");
   const [designation, setDesignation] = useState("");
-  const [employeeCode, setEmployeeCode] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -36,7 +35,6 @@ export function ProfileDialog({
       setFullName(profile.full_name ?? "");
       setDepartment(profile.department ?? "");
       setDesignation(profile.designation ?? "");
-      setEmployeeCode(profile.employee_id ?? "");
       setAvatarUrl(profile.avatar_url ?? "");
       setAvatarFile(null);
       setPreviewUrl(null);
@@ -92,6 +90,8 @@ export function ProfileDialog({
       // 1. Update DB profile avatar_url to null
       await updateMyProfile(userId, {
         full_name: fullName.trim() || null,
+        department: department.trim() || null,
+        designation: designation.trim() || null,
         avatar_url: null,
       });
 
@@ -153,7 +153,8 @@ export function ProfileDialog({
       // 2. Update profile
       await updateMyProfile(userId, {
         full_name: fullName.trim() || null,
-        employee_id: employeeCode.trim() || null,
+        department: department.trim() || null,
+        designation: designation.trim() || null,
         avatar_url: finalAvatarUrl || null,
       });
 
@@ -260,30 +261,13 @@ export function ProfileDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="dept">Department</Label>
-                <Input id="dept" value={department} readOnly className="bg-muted/40 text-muted-foreground cursor-not-allowed" />
+                <Input id="dept" value={department} onChange={(e) => setDepartment(e.target.value)} maxLength={80} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="desig">Designation</Label>
-                <Input id="desig" value={designation} readOnly className="bg-muted/40 text-muted-foreground cursor-not-allowed" />
+                <Input id="desig" value={designation} onChange={(e) => setDesignation(e.target.value)} maxLength={80} />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="employee-code">Employee Code</Label>
-              <Input
-                id="employee-code"
-                value={employeeCode}
-                onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
-                placeholder="Enter your company employee code"
-                maxLength={80}
-                className="font-mono"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Enter the employee code assigned to you by your company.
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Department and designation are managed by company administrators.
-            </p>
             <p className="text-xs text-muted-foreground">Signed in as {profile.email}</p>
           </div>
         )}

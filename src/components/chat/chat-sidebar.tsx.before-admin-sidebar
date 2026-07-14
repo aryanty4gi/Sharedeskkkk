@@ -1,11 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Search, MessageSquare, Settings, LogOut, Search as SearchIcon, FolderOpen, ShieldCheck } from "lucide-react";
+import { Plus, Search, MessageSquare, Settings, LogOut, Search as SearchIcon, FolderOpen } from "lucide-react";
 import { NotificationsMenu } from "./notifications-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchConversations, fetchMyProfile, fetchCurrentUserRole } from "@/lib/chat/queries";
+import { fetchConversations, fetchMyProfile } from "@/lib/chat/queries";
 import { useMultiTyping } from "@/lib/chat/use-multi-typing";
 import { formatMessageTime } from "@/lib/chat/format";
 import { UserAvatar } from "./user-avatar";
@@ -38,14 +38,6 @@ export function ChatSidebar({ userId }: { userId: string }) {
     queryKey: ["profile", userId],
     queryFn: () => fetchMyProfile(userId),
   });
-
-  const { data: myRole } = useQuery({
-    queryKey: ["current-role", userId],
-    queryFn: () => fetchCurrentUserRole(userId),
-  });
-
-  const canAccessAdmin =
-    myRole === "super_admin" || myRole === "hr_admin";
 
   // Realtime: refetch conversation list when any relevant table changes.
   useEffect(() => {
@@ -112,7 +104,7 @@ export function ChatSidebar({ userId }: { userId: string }) {
                   <DropdownMenuLabel>
                     <div className="text-sm">{me.full_name || me.email}</div>
                     <div className="text-xs font-normal text-muted-foreground">
-                      {[me.designation, me.department].filter(Boolean).join(" Â· ") || me.email}
+                      {[me.designation, me.department].filter(Boolean).join(" · ") || me.email}
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -136,7 +128,7 @@ export function ChatSidebar({ userId }: { userId: string }) {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search conversationsâ€¦"
+            placeholder="Search conversations…"
             className="h-9 border-transparent bg-muted/60 pl-8 text-sm focus-visible:bg-card focus-visible:border-border"
           />
         </div>
@@ -161,29 +153,10 @@ export function ChatSidebar({ userId }: { userId: string }) {
         </Link>
       </div>
 
-      {/* Administration */}
-      {canAccessAdmin && (
-        <div className="border-b border-border px-3 py-2">
-          <Link
-            to="/admin"
-            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            activeProps={{
-              className: "bg-primary/10 text-primary",
-            }}
-          >
-            <ShieldCheck className="size-4" />
-            <span>Admin Console</span>
-            <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider opacity-70">
-              {myRole === "super_admin" ? "Super" : "HR"}
-            </span>
-          </Link>
-        </div>
-      )}
-
       {/* List */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {isLoading ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">Loadingâ€¦</div>
+          <div className="p-4 text-center text-sm text-muted-foreground">Loading…</div>
         ) : filtered.length === 0 ? (
           <EmptyState onNewChat={() => setNewOpen(true)} hasAny={convos.length > 0} />
         ) : (
@@ -195,7 +168,7 @@ export function ChatSidebar({ userId }: { userId: string }) {
                 const preview = c.last_message?.deleted_at
                   ? "Message deleted"
                   : c.last_message?.message_type === "file" || c.last_message?.message_type === "image"
-                    ? `ðŸ“Ž ${c.last_message.file_name ?? "Attachment"}`
+                    ? `📎 ${c.last_message.file_name ?? "Attachment"}`
                     : c.last_message?.content ?? "No messages yet";
                 return (
                   <motion.li
