@@ -1,13 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Search, MessageSquare, Settings, LogOut, Search as SearchIcon, FolderOpen, ShieldCheck } from "lucide-react";
+import { Plus, Search, MessageSquare, Settings, LogOut, Search as SearchIcon, FolderOpen, ShieldCheck, Paperclip, Image as ImageIcon, FileText } from "lucide-react";
 import { NotificationsMenu } from "./notifications-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchConversations, fetchMyProfile, fetchCurrentUserRole } from "@/lib/chat/queries";
 import { useMultiTyping } from "@/lib/chat/use-multi-typing";
-import { formatMessageTime } from "@/lib/chat/format";
+import { formatMessageTime, getSidebarPreview } from "@/lib/chat/format";
 import { UserAvatar } from "./user-avatar";
 import { NewChatDialog } from "./new-chat-dialog";
 import { ProfileDialog } from "./profile-dialog";
@@ -111,8 +111,11 @@ export function ChatSidebar({ userId }: { userId: string }) {
                 <>
                   <DropdownMenuLabel>
                     <div className="text-sm">{me.full_name || me.email}</div>
-                    <div className="text-xs font-normal text-muted-foreground">
-                      {[me.designation, me.department].filter(Boolean).join(" Â· ") || me.email}
+                    <div className="text-xs font-normal text-muted-foreground flex items-center gap-1 flex-wrap">
+                      {me.designation && <span>{me.designation}</span>}
+                      {me.designation && me.department && <span aria-hidden="true"> · </span>}
+                      {me.department && <span>{me.department}</span>}
+                      {!me.designation && !me.department && <span>{me.email}</span>}
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -192,11 +195,21 @@ export function ChatSidebar({ userId }: { userId: string }) {
               {filtered.map((c) => {
                 const isActive = c.id === activeId;
                 const isTyping = typingConvIds.has(c.id);
-                const preview = c.last_message?.deleted_at
-                  ? "Message deleted"
-                  : c.last_message?.message_type === "file" || c.last_message?.message_type === "image"
-                    ? `ðŸ“Ž ${c.last_message.file_name ?? "Attachment"}`
-                    : c.last_message?.content ?? "No messages yet";
+                const preview = getSidebarPreview(c.last_message);
+                const previewIcon = (() => {
+                  if (preview.type === "image") {
+                    return <ImageIcon className="mr-1.5 inline size-3.5 shrink-0 align-text-bottom text-muted-foreground" />;
+                  }
+                  if (preview.type === "document") {
+                    return <FileText className="mr-1.5 inline size-3.5 shrink-0 align-text-bottom text-muted-foreground" />;
+                  }
+                  if (preview.type === "attachment") {
+                    return <Paperclip className="mr-1.5 inline size-3.5 shrink-0 align-text-bottom text-muted-foreground" />;
+                  }
+                  return null;
+                })();
+
+                const previewText = preview.text;
                 return (
                   <motion.li
                     key={c.id}
@@ -236,10 +249,11 @@ export function ChatSidebar({ userId }: { userId: string }) {
                             </span>
                           ) : (
                             <span className={cn(
-                              "truncate text-xs",
+                              "truncate text-xs flex items-center",
                               c.unread_count > 0 ? "font-medium text-foreground" : "text-muted-foreground",
                             )}>
-                              {preview}
+                              {previewIcon}
+                              <span className="truncate">{previewText}</span>
                             </span>
                           )}
                           {c.unread_count > 0 && (

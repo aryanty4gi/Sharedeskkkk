@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import type { Message, Profile, UploadedFile } from "@/lib/chat/queries";
 import { uploadAttachment, sendFileMessage, sendMessage } from "@/lib/chat/queries";
 import { cn } from "@/lib/utils";
+import { getReplyPreview } from "@/lib/chat/format";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
@@ -141,7 +142,7 @@ export function MessageComposer({
               Replying to {replyingTo?.full_name ?? replyingTo?.email ?? "message"}
             </div>
             <div className="truncate text-xs text-muted-foreground">
-              {replyTo.deleted_at ? "Deleted message" : replyTo.content ?? replyTo.file_name ?? ""}
+              {replyTo.deleted_at ? "Deleted message" : getReplyPreview(replyTo)}
             </div>
           </div>
           <button onClick={onCancelReply} className="text-muted-foreground hover:text-foreground">

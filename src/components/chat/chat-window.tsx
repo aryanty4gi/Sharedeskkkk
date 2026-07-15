@@ -5,6 +5,7 @@ import {
   fetchMessages, editMessage, deleteMessage, markRead,
   fetchReactionsForConversation, toggleReaction,
   fetchStarredIds, toggleStar,
+  fetchCalls, type CallRecord,
   type Message, type Profile, type Reaction,
 } from "@/lib/chat/queries";
 import { formatLastSeen } from "@/lib/chat/format";
@@ -14,7 +15,7 @@ import { MessageBubble, TypingBubble } from "./message-bubble";
 import { MessageComposer } from "./message-composer";
 import { ForwardDialog } from "./forward-dialog";
 import { VideoCall } from "./video-call";
-import { CheckCheck } from "lucide-react";
+import { CheckCheck, Phone, Video } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { differenceInMinutes, format } from "date-fns";
@@ -33,6 +34,11 @@ export function ChatWindow({
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ["messages", conversationId],
     queryFn: () => fetchMessages(conversationId),
+  });
+
+  const { data: calls = [] } = useQuery({
+    queryKey: ["calls", conversationId],
+    queryFn: () => fetchCalls(conversationId),
   });
 
   const { data: reads = [] } = useQuery({
@@ -108,6 +114,14 @@ export function ChatWindow({
       )
       .on(
         "postgres_changes",
+        { event: "*", schema: "public", table: "calls", filter: `conversation_id=eq.${conversationId}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["calls", conversationId] });
+          qc.invalidateQueries({ queryKey: ["conversations"] });
+        },
+      )
+      .on(
+        "postgres_changes",
         { event: "INSERT", schema: "public", table: "message_reads" },
         () => qc.invalidateQueries({ queryKey: ["reads", conversationId] }),
       )
@@ -163,24 +177,80 @@ export function ChatWindow({
   };
 
 
+  const formatCallDuration = (seconds: number | null): string => {
+    if (!seconds || seconds <= 0) return "00 sec";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    const secsStr = secs < 10 ? `0${secs}` : `${secs}`;
+    if (mins > 0) {
+      return `${mins} min ${secsStr} sec`;
+    }
+    return `${secsStr} sec`;
+  };
+
+  const getCallLabel = (c: CallRecord): string => {
+    const typeLabel = c.call_type === "video" ? "video" : "audio";
+    const typeCapitalized = c.call_type === "video" ? "Video" : "Audio";
+    if (c.status === "missed") {
+      return `Missed ${typeLabel} call`;
+    }
+    if (c.status === "declined") {
+      return `Declined ${typeLabel} call`;
+    }
+    if (c.status === "cancelled") {
+      return `Cancelled ${typeLabel} call`;
+    }
+    if (c.status === "failed") {
+      return `Failed ${typeLabel} call`;
+    }
+    if (c.status === "calling" || c.status === "ringing" || c.status === "connected") {
+      return `${typeCapitalized} call in progress...`;
+    }
+    // completed
+    const durationText = formatCallDuration(c.duration_seconds);
+    return `${typeCapitalized} call · ${durationText}`;
+  };
+
   const rendered = useMemo(() => {
-    const out: Array<{ type: "date"; date: string } | { type: "msg"; m: Message; showAvatar: boolean }> = [];
+    const out: Array<
+      | { type: "date"; date: string }
+      | { type: "msg"; m: Message; showAvatar: boolean }
+      | { type: "call"; c: CallRecord }
+    > = [];
+
+    // Combine calls and messages
+    const combined = [
+      ...messages.map((m) => ({ type: "msg" as const, data: m, time: new Date(m.created_at).getTime() })),
+      ...calls.map((c) => ({ type: "call" as const, data: c, time: new Date(c.created_at).getTime() })),
+    ];
+
+    // Sort chronologically
+    combined.sort((a, b) => a.time - b.time);
+
     let lastDate = "";
-    for (let i = 0; i < messages.length; i++) {
-      const m = messages[i];
-      const dateKey = format(new Date(m.created_at), "yyyy-MM-dd");
+    for (let i = 0; i < combined.length; i++) {
+      const item = combined[i];
+      const dateKey = format(new Date(item.time), "yyyy-MM-dd");
       if (dateKey !== lastDate) {
-        out.push({ type: "date", date: m.created_at });
+        out.push({ type: "date", date: new Date(item.time).toISOString() });
         lastDate = dateKey;
       }
-      const next = messages[i + 1];
-      const isLastOfGroup = !next
-        || next.sender_id !== m.sender_id
-        || differenceInMinutes(new Date(next.created_at), new Date(m.created_at)) > 3;
-      out.push({ type: "msg", m, showAvatar: isLastOfGroup });
+
+      if (item.type === "msg") {
+        const m = item.data as Message;
+        const next = combined[i + 1];
+        const isLastOfGroup = !next
+          || next.type !== "msg"
+          || (next.data as Message).sender_id !== m.sender_id
+          || differenceInMinutes(new Date(next.time), new Date(item.time)) > 3;
+        out.push({ type: "msg", m, showAvatar: isLastOfGroup });
+      } else {
+        const c = item.data as CallRecord;
+        out.push({ type: "call", c });
+      }
     }
     return out;
-  }, [messages]);
+  }, [messages, calls]);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
@@ -228,6 +298,21 @@ export function ChatWindow({
                         {format(new Date(item.date), "EEEE, MMM d")}
                       </span>
                       <div className="h-px flex-1 bg-border" />
+                    </div>
+                  );
+                }
+                if (item.type === "call") {
+                  const c = item.c;
+                  return (
+                    <div key={c.id} className="my-3 flex items-center justify-center gap-2">
+                      <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs text-muted-foreground shadow-sm">
+                        {c.call_type === "video" ? (
+                          <Video className="size-3.5 text-muted-foreground" />
+                        ) : (
+                          <Phone className="size-3.5 text-muted-foreground" />
+                        )}
+                        <span>{getCallLabel(c)}</span>
+                      </div>
                     </div>
                   );
                 }

@@ -78,7 +78,22 @@ export const deleteMessageAction = createServerFn({ method: "POST" })
     messageId: z.string().uuid(),
   }).parse(d))
   .handler(async ({ data }) => {
-    const { client } = await getAuthenticatedClient(data.token);
+    const { client, user } = await getAuthenticatedClient(data.token);
+    
+    // Server-side authorization check: fetch the message first to verify ownership
+    const { data: msg, error: fetchError } = await client
+      .from("messages")
+      .select("sender_id")
+      .eq("id", data.messageId)
+      .single();
+
+    if (fetchError || !msg) {
+      throw new Error("Message not found or access denied.");
+    }
+
+    if (msg.sender_id !== user.id) {
+      throw new Error("Unauthorized: You can only delete your own messages.");
+    }
     
     const { error } = await client
       .from("messages")

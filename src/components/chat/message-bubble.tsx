@@ -4,7 +4,7 @@ import {
   Check, CheckCheck, MoreHorizontal, Reply, Pencil, Trash2, Star, Forward,
 } from "lucide-react";
 import type { Message, Profile, Reaction } from "@/lib/chat/queries";
-import { formatMessageTime, formatFullTime } from "@/lib/chat/format";
+import { formatMessageTime, formatFullTime, isDocumentFile, cleanAttachmentContent, getReplyPreview } from "@/lib/chat/format";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
@@ -52,7 +52,9 @@ export function MessageBubble({
   const deleted = !!message.deleted_at;
   const isImage = message.message_type === "image" && !deleted;
   const isFile = message.message_type === "file" && !deleted;
-  const hasText = !!message.content && !deleted;
+  
+  const { hasRealText, cleanedText } = cleanAttachmentContent(message.content, message.file_name);
+  const hasText = hasRealText && !deleted;
 
   const bubbleClass = cn(
     "rounded-2xl text-sm shadow-sm",
@@ -90,7 +92,7 @@ export function MessageBubble({
                 isMine ? "border-white/40 bg-white/10" : "border-primary bg-muted",
               )}>
                 <div className="truncate opacity-80">
-                  {replySource.deleted_at ? "Deleted message" : replySource.content ?? replySource.file_name ?? ""}
+                  {replySource.deleted_at ? "This message was deleted" : getReplyPreview(replySource)}
                 </div>
               </div>
             )}
@@ -114,7 +116,7 @@ export function MessageBubble({
             ) : (
               (hasText || deleted) && (
                 <div className={cn("whitespace-pre-wrap break-words", (isImage || isFile) && "mt-1.5 px-1.5")}>
-                  {deleted ? "This message was deleted" : message.content}
+                  {deleted ? "This message was deleted" : cleanedText}
                 </div>
               )
             )}
@@ -177,12 +179,14 @@ export function MessageBubble({
           )}
         </div>
 
-        <ReactionBar
-          reactions={reactions}
-          currentUserId={currentUserId}
-          isMine={isMine}
-          onToggle={onReact}
-        />
+        {!deleted && (
+          <ReactionBar
+            reactions={reactions}
+            currentUserId={currentUserId}
+            isMine={isMine}
+            onToggle={onReact}
+          />
+        )}
       </div>
     </motion.div>
   );

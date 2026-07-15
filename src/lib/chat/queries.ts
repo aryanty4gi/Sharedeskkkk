@@ -538,3 +538,60 @@ export async function adminDeleteUser(targetUserId: string) {
     },
   });
 }
+
+/* -------------------- Call History -------------------- */
+
+export type CallRecord = {
+  id: string;
+  conversation_id: string;
+  caller_id: string;
+  receiver_id: string;
+  call_type: "audio" | "video";
+  status: "completed" | "missed" | "declined" | "cancelled" | "failed" | "ringing" | "calling" | "connected";
+  started_at: string;
+  answered_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  created_at: string;
+};
+
+export async function fetchCalls(conversationId: string): Promise<CallRecord[]> {
+  const { data, error } = await (supabase as any)
+    .from("calls")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+  if (error) throw error;
+  return (data ?? []) as CallRecord[];
+}
+
+export async function createCall(
+  callId: string,
+  conversationId: string,
+  callerId: string,
+  receiverId: string,
+  callType: "audio" | "video"
+) {
+  const { error } = await (supabase as any).from("calls").insert({
+    id: callId,
+    conversation_id: conversationId,
+    caller_id: callerId,
+    receiver_id: receiverId,
+    call_type: callType,
+    status: "calling",
+    started_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+}
+
+export async function updateCall(
+  callId: string,
+  patch: Partial<Omit<CallRecord, "id" | "created_at">>
+) {
+  const { error } = await (supabase as any)
+    .from("calls")
+    .update(patch)
+    .eq("id", callId);
+  if (error) throw error;
+}

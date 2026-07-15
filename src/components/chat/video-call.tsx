@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Phone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Profile } from "@/lib/chat/queries";
+import { type Profile, createCall, updateCall } from "@/lib/chat/queries";
 
 type CallStatus = "idle" | "calling" | "ringing" | "connected" | "ended";
 
@@ -33,10 +33,28 @@ export function VideoCall({
   const [micEnabled, setMicEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
 
+  const [currentCallId, setCurrentCallId] = useState<string | null>(null);
+  const [answeredAtTime, setAnsweredAtTime] = useState<string | null>(null);
+
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const channelRef = useRef<any>(null);
+
+  // 30 seconds call timeout
+  useEffect(() => {
+    if (status === "calling" && currentCallId) {
+      const timer = setTimeout(() => {
+        toast.info("No answer");
+        void updateCall(currentCallId, {
+          status: "missed",
+          ended_at: new Date().toISOString(),
+        });
+        endCall(true, true);
+      }, 30000);
+      return () => clearTimeout(timer);
+    }
+  }, [status, currentCallId]);
 
   // Initialize signaling channel
   useEffect(() => {
@@ -45,12 +63,15 @@ export function VideoCall({
 
     ch.on("broadcast", { event: "invite" }, (payload: any) => {
       if (payload.payload.from !== userId) {
+        setCurrentCallId(payload.payload.callId);
         setStatus("ringing");
         setActiveCall(true);
       }
     })
       .on("broadcast", { event: "accept" }, async (payload: any) => {
         if (payload.payload.from !== userId && status === "calling") {
+          const ansAt = payload.payload.answeredAt || new Date().toISOString();
+          setAnsweredAtTime(ansAt);
           setStatus("connected");
           await startConnection(true);
         }
@@ -58,13 +79,13 @@ export function VideoCall({
       .on("broadcast", { event: "decline" }, (payload: any) => {
         if (payload.payload.from !== userId) {
           toast.info("Call declined by recipient");
-          endCall(false);
+          endCall(false, true);
         }
       })
       .on("broadcast", { event: "hangup" }, (payload: any) => {
         if (payload.payload.from !== userId) {
           toast.info("Call ended");
-          endCall(false);
+          endCall(false, true);
         }
       })
       .on("broadcast", { event: "webrtc" }, async (payload: any) => {
@@ -101,7 +122,7 @@ export function VideoCall({
       // Ensure clean closure of streams/connections on unmount
       if (pcRef.current) pcRef.current.close();
     };
-  }, [conversationId, userId, status]);
+  }, [conversationId, userId, status, currentCallId, answeredAtTime]);
 
   // Set local video stream elements when localStream changes
   useEffect(() => {
@@ -118,22 +139,37 @@ export function VideoCall({
   }, [remoteStream]);
 
   const startCall = async () => {
+    const callId = crypto.randomUUID();
+    setCurrentCallId(callId);
     setStatus("calling");
     setActiveCall(true);
+
+    void createCall(callId, conversationId, userId, other.id, "video");
+
     channelRef.current?.send({
       type: "broadcast",
       event: "invite",
-      payload: { from: userId },
+      payload: { from: userId, callId, callType: "video" },
     });
   };
 
   const acceptCall = async () => {
     setStatus("connected");
+    const nowStr = new Date().toISOString();
+    setAnsweredAtTime(nowStr);
+
     channelRef.current?.send({
       type: "broadcast",
       event: "accept",
-      payload: { from: userId },
+      payload: { from: userId, answeredAt: nowStr },
     });
+
+    if (currentCallId) {
+      void updateCall(currentCallId, {
+        status: "connected",
+        answered_at: nowStr,
+      });
+    }
     await startConnection(false);
   };
 
@@ -143,7 +179,13 @@ export function VideoCall({
       event: "decline",
       payload: { from: userId },
     });
-    endCall(true);
+    if (currentCallId) {
+      void updateCall(currentCallId, {
+        status: "declined",
+        ended_at: new Date().toISOString(),
+      });
+    }
+    endCall(false, true);
   };
 
   const startConnection = async (isInitiator: boolean) => {
@@ -201,12 +243,35 @@ export function VideoCall({
     }
   };
 
-  const endCall = (notify: boolean) => {
+  const endCall = (notify: boolean, skipDbUpdate = false) => {
     if (notify) {
       channelRef.current?.send({
         type: "broadcast",
         event: "hangup",
         payload: { from: userId },
+      });
+    }
+
+    if (currentCallId && !skipDbUpdate) {
+      const nowStr = new Date().toISOString();
+      let finalStatus: "completed" | "missed" | "declined" | "cancelled" | "failed" = "completed";
+      let elapsedSeconds = null;
+
+      if (status === "calling") {
+        finalStatus = "cancelled";
+      } else if (status === "ringing") {
+        finalStatus = "declined";
+      } else if (status === "connected") {
+        finalStatus = "completed";
+        if (answeredAtTime) {
+          elapsedSeconds = Math.max(0, Math.floor((new Date(nowStr).getTime() - new Date(answeredAtTime).getTime()) / 1000));
+        }
+      }
+
+      void updateCall(currentCallId, {
+        status: finalStatus,
+        ended_at: nowStr,
+        duration_seconds: elapsedSeconds,
       });
     }
 
@@ -223,6 +288,8 @@ export function VideoCall({
     setRemoteStream(null);
     setStatus("idle");
     setActiveCall(false);
+    setCurrentCallId(null);
+    setAnsweredAtTime(null);
   };
 
   const toggleMic = () => {

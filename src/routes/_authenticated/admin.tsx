@@ -476,6 +476,19 @@ function DepartmentFilesView() {
       if ("error" in res) throw new Error(res.error);
       return (res.documents as unknown as FileDocument[]) ?? [];
     },
+    retry: (failureCount, error) => {
+      const errMsg = error?.message?.toLowerCase() || "";
+      if (
+        errMsg.includes("unauthorized") ||
+        errMsg.includes("forbidden") ||
+        errMsg.includes("missing supabase") ||
+        errMsg.includes("privileges required") ||
+        errMsg.includes("config")
+      ) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   // Extract distinct departments from files
