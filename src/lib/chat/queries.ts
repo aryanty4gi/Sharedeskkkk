@@ -440,9 +440,10 @@ export async function fetchCurrentUserRole(userId: string): Promise<CompanyRole>
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
+  if (!data) return "employee";
 
   return data.role as CompanyRole;
 }
