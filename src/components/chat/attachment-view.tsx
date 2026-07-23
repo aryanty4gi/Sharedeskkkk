@@ -6,8 +6,12 @@ import type { Message } from "@/lib/chat/queries";
 function formatBytes(n: number | null) {
   if (!n || n <= 0) return "";
   const units = ["B", "KB", "MB", "GB"];
-  let i = 0; let v = n;
-  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
   return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
 }
 
@@ -43,14 +47,18 @@ export function FileAttachment({ message, isMine }: { message: Message; isMine: 
   const { data: url } = useSignedUrl(message.file_url);
   const isImg = message.file_mime?.startsWith("image/");
   return (
-    <div className={cn(
-      "flex items-center gap-3 rounded-xl border px-3 py-2 max-w-[300px]",
-      isMine ? "border-white/25 bg-white/10" : "border-border bg-muted/50",
-    )}>
-      <div className={cn(
-        "flex size-9 shrink-0 items-center justify-center rounded-lg",
-        isMine ? "bg-white/20" : "bg-background",
-      )}>
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-xl border px-3 py-2 max-w-[300px]",
+        isMine ? "border-white/25 bg-white/10" : "border-border bg-muted/50",
+      )}
+    >
+      <div
+        className={cn(
+          "flex size-9 shrink-0 items-center justify-center rounded-lg",
+          isMine ? "bg-white/20" : "bg-background",
+        )}
+      >
         {isImg ? <ImageIcon className="size-4" /> : <FileText className="size-4" />}
       </div>
       <div className="min-w-0 flex-1">

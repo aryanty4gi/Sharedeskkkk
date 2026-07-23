@@ -8,7 +8,12 @@ interface Props {
   className?: string;
 }
 
-export function AnimatedNumber({ value, format = (n) => n.toFixed(0), duration = 0.6, className }: Props) {
+export function AnimatedNumber({
+  value,
+  format = (n) => n.toFixed(0),
+  duration = 0.6,
+  className,
+}: Props) {
   const mv = useMotionValue(value);
   const [display, setDisplay] = useState(format(value));
 

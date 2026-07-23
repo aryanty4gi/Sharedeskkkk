@@ -1,7 +1,20 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Search, MessageSquare, Settings, LogOut, Search as SearchIcon, FolderOpen, ShieldCheck, Paperclip, Image as ImageIcon, FileText } from "lucide-react";
+import {
+  Plus,
+  Search,
+  MessageSquare,
+  Settings,
+  LogOut,
+  Search as SearchIcon,
+  FolderOpen,
+  ShieldCheck,
+  Paperclip,
+  Image as ImageIcon,
+  FileText,
+  Users,
+} from "lucide-react";
 import { NotificationsMenu } from "./notifications-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +27,12 @@ import { ProfileDialog } from "./profile-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
@@ -44,8 +62,7 @@ export function ChatSidebar({ userId }: { userId: string }) {
     queryFn: () => fetchCurrentUserRole(userId),
   });
 
-  const canAccessAdmin =
-    myRole === "super_admin" || myRole === "hr_admin";
+  const canAccessAdmin = myRole === "super_admin" || myRole === "hr_admin";
 
   // Realtime: refetch conversation list when any relevant table changes.
   useEffect(() => {
@@ -54,18 +71,27 @@ export function ChatSidebar({ userId }: { userId: string }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
         qc.invalidateQueries({ queryKey: ["conversations"] });
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_participants" }, () => {
-        qc.invalidateQueries({ queryKey: ["conversations"] });
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversation_participants" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["conversations"] });
+        },
+      )
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles" }, () => {
         qc.invalidateQueries({ queryKey: ["conversations"] });
         qc.invalidateQueries({ queryKey: ["directory"] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [userId, qc]);
 
-  const typingConvIds = useMultiTyping(convos.map((c) => c.id), userId);
+  const typingConvIds = useMultiTyping(
+    convos.map((c) => c.id),
+    userId,
+  );
 
   const filtered = convos.filter((c) => {
     if (!q.trim()) return true;
@@ -89,22 +115,30 @@ export function ChatSidebar({ userId }: { userId: string }) {
           </div>
           <div>
             <p className="text-sm font-semibold leading-tight">ShareDesk</p>
-            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Nuberg</p>
+            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              Nuberg
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Link to="/search" className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" title="Search">
+          <button
+            onClick={() => {
+              window.dispatchEvent(
+                new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
+              );
+            }}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+            title="Global Search (Ctrl+K)"
+          >
             <SearchIcon className="size-4" />
-          </Link>
+          </button>
           <NotificationsMenu userId={userId} />
           <Button size="icon" variant="ghost" onClick={() => setNewOpen(true)} title="New chat">
             <Plus className="size-4" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="ml-1">
-                {me && <UserAvatar profile={me} showStatus />}
-              </button>
+              <button className="ml-1">{me && <UserAvatar profile={me} showStatus />}</button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               {me && (
@@ -124,7 +158,10 @@ export function ChatSidebar({ userId }: { userId: string }) {
               <DropdownMenuItem onSelect={() => setProfileOpen(true)}>
                 <Settings className="mr-2 size-4" /> Edit profile
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem
+                onSelect={handleSignOut}
+                className="text-destructive focus:text-destructive"
+              >
                 <LogOut className="mr-2 size-4" /> Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -143,6 +180,20 @@ export function ChatSidebar({ userId }: { userId: string }) {
             className="h-9 border-transparent bg-muted/60 pl-8 text-sm focus-visible:bg-card focus-visible:border-border"
           />
         </div>
+      </div>
+
+      {/* Employee Directory */}
+      <div className="border-b border-border px-3 py-2">
+        <Link
+          to="/employees"
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          activeProps={{
+            className: "bg-primary/10 text-primary",
+          }}
+        >
+          <Users className="size-4" />
+          <span>Employee Directory</span>
+        </Link>
       </div>
 
       {/* Department Documents */}
@@ -198,13 +249,19 @@ export function ChatSidebar({ userId }: { userId: string }) {
                 const preview = getSidebarPreview(c.last_message);
                 const previewIcon = (() => {
                   if (preview.type === "image") {
-                    return <ImageIcon className="mr-1.5 inline size-3.5 shrink-0 align-text-bottom text-muted-foreground" />;
+                    return (
+                      <ImageIcon className="mr-1.5 inline size-3.5 shrink-0 align-text-bottom text-muted-foreground" />
+                    );
                   }
                   if (preview.type === "document") {
-                    return <FileText className="mr-1.5 inline size-3.5 shrink-0 align-text-bottom text-muted-foreground" />;
+                    return (
+                      <FileText className="mr-1.5 inline size-3.5 shrink-0 align-text-bottom text-muted-foreground" />
+                    );
                   }
                   if (preview.type === "attachment") {
-                    return <Paperclip className="mr-1.5 inline size-3.5 shrink-0 align-text-bottom text-muted-foreground" />;
+                    return (
+                      <Paperclip className="mr-1.5 inline size-3.5 shrink-0 align-text-bottom text-muted-foreground" />
+                    );
                   }
                   return null;
                 })();
@@ -241,17 +298,22 @@ export function ChatSidebar({ userId }: { userId: string }) {
                         <div className="flex items-center justify-between gap-2">
                           {isTyping ? (
                             <span className="truncate text-xs font-medium text-primary">
-                              typing<span className="ml-0.5 inline-flex gap-0.5">
+                              typing
+                              <span className="ml-0.5 inline-flex gap-0.5">
                                 <span className="animate-bounce [animation-delay:-0.3s]">.</span>
                                 <span className="animate-bounce [animation-delay:-0.15s]">.</span>
                                 <span className="animate-bounce">.</span>
                               </span>
                             </span>
                           ) : (
-                            <span className={cn(
-                              "truncate text-xs flex items-center",
-                              c.unread_count > 0 ? "font-medium text-foreground" : "text-muted-foreground",
-                            )}>
+                            <span
+                              className={cn(
+                                "truncate text-xs flex items-center",
+                                c.unread_count > 0
+                                  ? "font-medium text-foreground"
+                                  : "text-muted-foreground",
+                              )}
+                            >
                               {previewIcon}
                               <span className="truncate">{previewText}</span>
                             </span>

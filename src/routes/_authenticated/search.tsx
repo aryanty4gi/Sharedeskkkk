@@ -9,7 +9,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UserAvatar } from "@/components/chat/user-avatar";
 import { useCurrentUser } from "@/lib/chat/use-current-user";
 import {
-  searchEverything, getOrCreateConversation, fetchStarredMessages, type Message, type Profile,
+  searchEverything,
+  getOrCreateConversation,
+  fetchStarredMessages,
+  type Message,
+  type Profile,
 } from "@/lib/chat/queries";
 import { usePresence } from "./index";
 import { cn } from "@/lib/utils";
@@ -56,7 +60,10 @@ function SearchPage() {
   return (
     <div className="mx-auto flex h-screen w-full max-w-4xl flex-col">
       <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-3">
-        <Link to="/" className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+        <Link
+          to="/"
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
           <ArrowLeft className="size-4" />
         </Link>
         <div className="relative flex-1">
@@ -112,7 +119,15 @@ function SearchPage() {
   );
 }
 
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function Section({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <section>
       <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -162,8 +177,14 @@ function PeopleList({ items, onOpen }: { items: Profile[]; onOpen: (id: string) 
 }
 
 function MessageList({
-  items, onOpen, highlight,
-}: { items: Message[]; onOpen: (m: Message) => void; highlight?: string }) {
+  items,
+  onOpen,
+  highlight,
+}: {
+  items: Message[];
+  onOpen: (m: Message) => void;
+  highlight?: string;
+}) {
   if (items.length === 0) return <Empty label="Nothing to show." />;
   return (
     <ul className="space-y-1.5">
@@ -177,15 +198,21 @@ function MessageList({
             )}
           >
             <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-              {m.message_type === "text"
-                ? <MessageSquare className="size-3.5 text-muted-foreground" />
-                : <FileText className="size-3.5 text-muted-foreground" />}
+              {m.message_type === "text" ? (
+                <MessageSquare className="size-3.5 text-muted-foreground" />
+              ) : (
+                <FileText className="size-3.5 text-muted-foreground" />
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="line-clamp-2 text-sm">
-                {m.message_type === "text"
-                  ? <Highlight text={m.content ?? ""} term={highlight} />
-                  : <><Highlight text={m.file_name ?? "Attachment"} term={highlight} /></>}
+                {m.message_type === "text" ? (
+                  <Highlight text={m.content ?? ""} term={highlight} />
+                ) : (
+                  <>
+                    <Highlight text={m.file_name ?? "Attachment"} term={highlight} />
+                  </>
+                )}
               </div>
               <div className="mt-0.5 text-[10px] text-muted-foreground">
                 {formatDistanceToNow(new Date(m.created_at), { addSuffix: true })}
@@ -205,7 +232,9 @@ function Highlight({ text, term }: { text: string; term?: string }) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="rounded-sm bg-primary/20 px-0.5 text-foreground">{text.slice(idx, idx + term.length)}</mark>
+      <mark className="rounded-sm bg-primary/20 px-0.5 text-foreground">
+        {text.slice(idx, idx + term.length)}
+      </mark>
       {text.slice(idx + term.length)}
     </>
   );

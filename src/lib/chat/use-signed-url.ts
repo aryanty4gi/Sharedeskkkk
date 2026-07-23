@@ -13,7 +13,11 @@ export function useSignedUrl(path: string | null | undefined) {
 }
 
 export function useProfileAvatarUrl(avatarUrl: string | null | undefined) {
-  const isPrivate = avatarUrl && !avatarUrl.startsWith("http://") && !avatarUrl.startsWith("https://") && !avatarUrl.startsWith("blob:");
+  const isPrivate =
+    avatarUrl &&
+    !avatarUrl.startsWith("http://") &&
+    !avatarUrl.startsWith("https://") &&
+    !avatarUrl.startsWith("blob:");
 
   const { data } = useQuery({
     queryKey: ["avatar-signed-url", avatarUrl],

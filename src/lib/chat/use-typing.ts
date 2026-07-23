@@ -12,7 +12,9 @@ export function useTyping(conversationId: string | null, userId: string | null) 
 
   useEffect(() => {
     if (!conversationId || !userId) return;
-    const ch = supabase.channel(`typing:${conversationId}`, { config: { broadcast: { self: false } } });
+    const ch = supabase.channel(`typing:${conversationId}`, {
+      config: { broadcast: { self: false } },
+    });
     ch.on("broadcast", { event: "typing" }, (payload) => {
       if (payload.payload?.user_id === userId) return;
       setOtherTyping(true);

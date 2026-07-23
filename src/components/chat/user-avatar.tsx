@@ -16,7 +16,12 @@ export function UserAvatar({
   className?: string;
 }) {
   const avatarUrl = useProfileAvatarUrl(profile.avatar_url);
-  const sizes = { sm: "size-7 text-[10px]", md: "size-9 text-xs", lg: "size-11 text-sm", xl: "size-16 text-base" };
+  const sizes = {
+    sm: "size-7 text-[10px]",
+    md: "size-9 text-xs",
+    lg: "size-11 text-sm",
+    xl: "size-16 text-base",
+  };
   return (
     <div className={cn("relative", className)}>
       <Avatar className={sizes[size]}>

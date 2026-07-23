@@ -5,7 +5,8 @@ import type { Database } from "@/integrations/supabase/types";
 
 async function getAuthenticatedClient(token: string) {
   const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const SUPABASE_PUBLISHABLE_KEY =
+    process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     throw new Error("Missing Supabase configuration environment variables.");
@@ -24,7 +25,10 @@ async function getAuthenticatedClient(token: string) {
     },
   });
 
-  const { data: { user }, error } = await client.auth.getUser(token);
+  const {
+    data: { user },
+    error,
+  } = await client.auth.getUser(token);
   if (error || !user) {
     throw new Error("Unauthorized: Invalid session or authentication expired.");
   }
@@ -33,15 +37,19 @@ async function getAuthenticatedClient(token: string) {
 }
 
 export const sendMessageAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    conversationId: z.string().uuid(),
-    content: z.string().min(1),
-    replyTo: z.string().uuid().optional().nullable(),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        conversationId: z.string().uuid(),
+        content: z.string().min(1),
+        replyTo: z.string().uuid().optional().nullable(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client, user } = await getAuthenticatedClient(data.token);
-    
+
     const { error } = await client.from("messages").insert({
       conversation_id: data.conversationId,
       sender_id: user.id,
@@ -49,37 +57,59 @@ export const sendMessageAction = createServerFn({ method: "POST" })
       message_type: "text",
       reply_to: data.replyTo ?? null,
     });
-    
+
     if (error) throw error;
     return { success: true };
   });
 
 export const editMessageAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    messageId: z.string().uuid(),
-    content: z.string().min(1),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        messageId: z.string().uuid(),
+        content: z.string().min(1),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
-    const { client } = await getAuthenticatedClient(data.token);
-    
+    const { client, user } = await getAuthenticatedClient(data.token);
+
+    const { data: msg, error: fetchError } = await client
+      .from("messages")
+      .select("sender_id")
+      .eq("id", data.messageId)
+      .single();
+
+    if (fetchError || !msg) {
+      throw new Error("Message not found or access denied.");
+    }
+
+    if (msg.sender_id !== user.id) {
+      throw new Error("Unauthorized: You can only edit your own messages.");
+    }
+
     const { error } = await client
       .from("messages")
       .update({ content: data.content, edited_at: new Date().toISOString() })
       .eq("id", data.messageId);
-      
+
     if (error) throw error;
     return { success: true };
   });
 
 export const deleteMessageAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    messageId: z.string().uuid(),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        messageId: z.string().uuid(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client, user } = await getAuthenticatedClient(data.token);
-    
+
     // Server-side authorization check: fetch the message first to verify ownership
     const { data: msg, error: fetchError } = await client
       .from("messages")
@@ -94,26 +124,30 @@ export const deleteMessageAction = createServerFn({ method: "POST" })
     if (msg.sender_id !== user.id) {
       throw new Error("Unauthorized: You can only delete your own messages.");
     }
-    
+
     const { error } = await client
       .from("messages")
       .update({ content: null, deleted_at: new Date().toISOString() })
       .eq("id", data.messageId);
-      
+
     if (error) throw error;
     return { success: true };
   });
 
 export const updateProfileAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    fullName: z.string().min(1).optional().nullable(),
-    employeeCode: z.string().max(80).optional().nullable(),
-    avatarUrl: z.string().optional().nullable(),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        fullName: z.string().min(1).optional().nullable(),
+        employeeCode: z.string().max(80).optional().nullable(),
+        avatarUrl: z.string().optional().nullable(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client, user } = await getAuthenticatedClient(data.token);
-    
+
     const { error } = await client
       .from("profiles")
       .update({
@@ -123,16 +157,20 @@ export const updateProfileAction = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
       })
       .eq("id", user.id);
-      
+
     if (error) throw error;
     return { success: true };
   });
 
 export const getOrCreateConversationAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    otherUserId: z.string().uuid(),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        otherUserId: z.string().uuid(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client, user } = await getAuthenticatedClient(data.token);
     const uid = user.id;
@@ -170,9 +208,7 @@ export const getOrCreateConversationAction = createServerFn({ method: "POST" })
         hint: convErr.hint,
       });
 
-      throw new Error(
-        `Unable to create conversation: ${convErr.message} [${convErr.code}]`
-      );
+      throw new Error(`Unable to create conversation: ${convErr.message} [${convErr.code}]`);
     }
     const cid = conv.id;
 
@@ -190,14 +226,18 @@ export const getOrCreateConversationAction = createServerFn({ method: "POST" })
   });
 
 export const toggleReactionAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    messageId: z.string().uuid(),
-    emoji: z.string().min(1),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        messageId: z.string().uuid(),
+        emoji: z.string().min(1),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client, user } = await getAuthenticatedClient(data.token);
-    
+
     const { data: existing } = await client
       .from("message_reactions")
       .select("id")
@@ -205,7 +245,7 @@ export const toggleReactionAction = createServerFn({ method: "POST" })
       .eq("user_id", user.id)
       .eq("emoji", data.emoji)
       .maybeSingle();
-      
+
     if (existing) {
       await client.from("message_reactions").delete().eq("id", existing.id);
     } else {
@@ -219,22 +259,30 @@ export const toggleReactionAction = createServerFn({ method: "POST" })
   });
 
 export const toggleStarAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    messageId: z.string().uuid(),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        messageId: z.string().uuid(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client, user } = await getAuthenticatedClient(data.token);
-    
+
     const { data: existing } = await client
       .from("starred_messages")
       .select("message_id")
       .eq("user_id", user.id)
       .eq("message_id", data.messageId)
       .maybeSingle();
-      
+
     if (existing) {
-      await client.from("starred_messages").delete().eq("user_id", user.id).eq("message_id", data.messageId);
+      await client
+        .from("starred_messages")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("message_id", data.messageId);
     } else {
       await client.from("starred_messages").insert({
         user_id: user.id,
@@ -245,21 +293,25 @@ export const toggleStarAction = createServerFn({ method: "POST" })
   });
 
 export const forwardMessageAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    messageId: z.string().uuid(),
-    toConversationId: z.string().uuid(),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        messageId: z.string().uuid(),
+        toConversationId: z.string().uuid(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client, user } = await getAuthenticatedClient(data.token);
-    
+
     const { data: msg, error: msgErr } = await client
       .from("messages")
       .select("*")
       .eq("id", data.messageId)
       .single();
     if (msgErr || !msg) throw new Error("Source message not found.");
-    
+
     const { error } = await client.from("messages").insert({
       conversation_id: data.toConversationId,
       sender_id: user.id,
@@ -270,22 +322,25 @@ export const forwardMessageAction = createServerFn({ method: "POST" })
       file_size: msg.file_size,
       file_mime: msg.file_mime,
     });
-    
+
     if (error) throw error;
     return { success: true };
   });
 
-
 /* -------------------- Admin Management -------------------- */
 
 export const adminUpdateEmployeeAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    targetUserId: z.string().uuid(),
-    department: z.string(),
-    designation: z.string(),
-    managerId: z.string().uuid().nullable(),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        targetUserId: z.string().uuid(),
+        department: z.string(),
+        designation: z.string(),
+        managerId: z.string().uuid().nullable(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client } = await getAuthenticatedClient(data.token);
 
@@ -302,17 +357,15 @@ export const adminUpdateEmployeeAction = createServerFn({ method: "POST" })
   });
 
 export const adminUpdateUserRoleAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    targetUserId: z.string().uuid(),
-    role: z.enum([
-      "super_admin",
-      "hr_admin",
-      "department_head",
-      "manager",
-      "employee",
-    ]),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        targetUserId: z.string().uuid(),
+        role: z.enum(["super_admin", "hr_admin", "department_head", "manager", "employee"]),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client } = await getAuthenticatedClient(data.token);
 
@@ -326,10 +379,14 @@ export const adminUpdateUserRoleAction = createServerFn({ method: "POST" })
     return { success: true };
   });
 export const adminDeleteUserAction = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({
-    token: z.string(),
-    targetUserId: z.string().uuid(),
-  }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z.string(),
+        targetUserId: z.string().uuid(),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     const { client, user } = await getAuthenticatedClient(data.token);
 
@@ -353,12 +410,9 @@ export const adminDeleteUserAction = createServerFn({ method: "POST" })
     }
 
     // Load service-role client only inside the trusted server handler.
-    const { supabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { error: deleteError } =
-      await supabaseAdmin.auth.admin.deleteUser(data.targetUserId);
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(data.targetUserId);
 
     if (deleteError) {
       throw new Error(deleteError.message);

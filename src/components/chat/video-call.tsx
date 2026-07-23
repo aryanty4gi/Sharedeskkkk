@@ -8,10 +8,7 @@ import { type Profile, createCall, updateCall } from "@/lib/chat/queries";
 type CallStatus = "idle" | "calling" | "ringing" | "connected" | "ended";
 
 const iceServers = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ],
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }],
 };
 
 export function VideoCall({
@@ -39,7 +36,7 @@ export function VideoCall({
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const channelRef = useRef<any>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // 30 seconds call timeout
   useEffect(() => {
@@ -61,58 +58,77 @@ export function VideoCall({
     const channelName = `signaling:${conversationId}`;
     const ch = supabase.channel(channelName);
 
-    ch.on("broadcast", { event: "invite" }, (payload: any) => {
-      if (payload.payload.from !== userId) {
-        setCurrentCallId(payload.payload.callId);
-        setStatus("ringing");
-        setActiveCall(true);
-      }
-    })
-      .on("broadcast", { event: "accept" }, async (payload: any) => {
-        if (payload.payload.from !== userId && status === "calling") {
-          const ansAt = payload.payload.answeredAt || new Date().toISOString();
-          setAnsweredAtTime(ansAt);
-          setStatus("connected");
-          await startConnection(true);
+    ch.on(
+      "broadcast",
+      { event: "invite" },
+      (payload: { payload: { from: string; callId: string } }) => {
+        if (payload.payload.from !== userId) {
+          setCurrentCallId(payload.payload.callId);
+          setStatus("ringing");
+          setActiveCall(true);
         }
-      })
-      .on("broadcast", { event: "decline" }, (payload: any) => {
+      },
+    )
+      .on(
+        "broadcast",
+        { event: "accept" },
+        async (payload: { payload: { from: string; answeredAt?: string } }) => {
+          if (payload.payload.from !== userId && status === "calling") {
+            const ansAt = payload.payload.answeredAt || new Date().toISOString();
+            setAnsweredAtTime(ansAt);
+            setStatus("connected");
+            await startConnection(true);
+          }
+        },
+      )
+      .on("broadcast", { event: "decline" }, (payload: { payload: { from: string } }) => {
         if (payload.payload.from !== userId) {
           toast.info("Call declined by recipient");
           endCall(false, true);
         }
       })
-      .on("broadcast", { event: "hangup" }, (payload: any) => {
+      .on("broadcast", { event: "hangup" }, (payload: { payload: { from: string } }) => {
         if (payload.payload.from !== userId) {
           toast.info("Call ended");
           endCall(false, true);
         }
       })
-      .on("broadcast", { event: "webrtc" }, async (payload: any) => {
-        if (payload.payload.from === userId) return;
+      .on(
+        "broadcast",
+        { event: "webrtc" },
+        async (payload: {
+          payload: {
+            from: string;
+            type?: "offer" | "answer" | "candidate";
+            sdp?: string;
+            candidate?: RTCIceCandidateInit;
+          };
+        }) => {
+          if (payload.payload.from === userId) return;
 
-        const { type, sdp, candidate } = payload.payload;
-        const pc = pcRef.current;
+          const { type, sdp, candidate } = payload.payload;
+          const pc = pcRef.current;
 
-        if (type === "offer" && pc) {
-          await pc.setRemoteDescription(new RTCSessionDescription({ type, sdp }));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          ch.send({
-            type: "broadcast",
-            event: "webrtc",
-            payload: { type: "answer", sdp: answer.sdp, from: userId },
-          });
-        } else if (type === "answer" && pc) {
-          await pc.setRemoteDescription(new RTCSessionDescription({ type, sdp }));
-        } else if (type === "candidate" && pc && candidate) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          } catch (e) {
-            console.error("Error adding ice candidate", e);
+          if (type === "offer" && pc && sdp) {
+            await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp }));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            ch.send({
+              type: "broadcast",
+              event: "webrtc",
+              payload: { type: "answer", sdp: answer.sdp, from: userId },
+            });
+          } else if (type === "answer" && pc && sdp) {
+            await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp }));
+          } else if (type === "candidate" && pc && candidate) {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (e) {
+              console.error("Error adding ice candidate", e);
+            }
           }
-        }
-      })
+        },
+      )
       .subscribe();
 
     channelRef.current = ch;
@@ -264,7 +280,10 @@ export function VideoCall({
       } else if (status === "connected") {
         finalStatus = "completed";
         if (answeredAtTime) {
-          elapsedSeconds = Math.max(0, Math.floor((new Date(nowStr).getTime() - new Date(answeredAtTime).getTime()) / 1000));
+          elapsedSeconds = Math.max(
+            0,
+            Math.floor((new Date(nowStr).getTime() - new Date(answeredAtTime).getTime()) / 1000),
+          );
         }
       }
 
@@ -327,7 +346,6 @@ export function VideoCall({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="relative w-full max-w-4xl aspect-video rounded-3xl bg-zinc-900 overflow-hidden shadow-2xl border border-zinc-800 flex flex-col justify-between">
-        
         {/* Remote Video Stream (Main view) */}
         <div className="absolute inset-0 flex items-center justify-center">
           {status === "connected" && remoteStream ? (
@@ -369,7 +387,10 @@ export function VideoCall({
               <p className="text-lg font-semibold text-zinc-100 mb-2">Incoming Call</p>
               <p className="text-sm text-zinc-400 mb-6">{other.full_name || other.email}</p>
               <div className="flex justify-center gap-4">
-                <Button onClick={acceptCall} className="bg-emerald-600 hover:bg-emerald-700 rounded-xl px-6">
+                <Button
+                  onClick={acceptCall}
+                  className="bg-emerald-600 hover:bg-emerald-700 rounded-xl px-6"
+                >
                   <Phone className="mr-2 size-4" /> Accept
                 </Button>
                 <Button onClick={declineCall} variant="destructive" className="rounded-xl px-6">
@@ -419,7 +440,6 @@ export function VideoCall({
             <PhoneOff className="size-5" />
           </Button>
         </div>
-
       </div>
     </div>
   );

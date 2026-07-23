@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AiAssistant } from "@/components/ai/ai-assistant";
+import { GlobalSearchDialog } from "@/components/search/global-search-dialog";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/_authenticated")({
     <>
       <Outlet />
       <AiAssistant />
+      <GlobalSearchDialog />
     </>
   ),
 });

@@ -18,16 +18,32 @@ export function useNotifications(userId: string | undefined) {
       .channel(`notifs:${userId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
         (payload) => {
           const n = payload.new as AppNotification;
-          qc.setQueryData<AppNotification[]>(["notifications", userId], (prev = []) => [n, ...prev]);
-          if (typeof window !== "undefined" && "Notification" in window
-              && window.Notification.permission === "granted"
-              && document.visibilityState !== "visible") {
+          qc.setQueryData<AppNotification[]>(["notifications", userId], (prev = []) => [
+            n,
+            ...prev,
+          ]);
+          if (
+            typeof window !== "undefined" &&
+            "Notification" in window &&
+            window.Notification.permission === "granted" &&
+            document.visibilityState !== "visible"
+          ) {
             try {
-              new window.Notification("ShareDesk", { body: n.preview ?? "New activity", tag: n.id });
-            } catch { /* ignore */ }
+              new window.Notification("ShareDesk", {
+                body: n.preview ?? "New activity",
+                tag: n.id,
+              });
+            } catch {
+              /* ignore */
+            }
           }
         },
       )
@@ -37,7 +53,9 @@ export function useNotifications(userId: string | undefined) {
         () => qc.invalidateQueries({ queryKey: ["notifications", userId] }),
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [userId, qc]);
 
   const unread = (query.data ?? []).filter((n) => !n.read_at).length;

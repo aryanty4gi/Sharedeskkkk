@@ -14,7 +14,7 @@ export interface Computed {
 export function compute(
   template: Template,
   values: Record<string, number>,
-  scenarioMultiplier: number
+  scenarioMultiplier: number,
 ): Computed {
   // Build scope from raw inputs
   const scope: Record<string, number> = {};

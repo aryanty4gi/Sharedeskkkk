@@ -88,13 +88,19 @@ export async function fetchDirectory(currentUserId: string): Promise<Profile[]> 
 }
 
 export async function fetchMyProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
   if (error) throw error;
   return (data as Profile) ?? null;
 }
 
 export async function updateMyProfile(userId: string, patch: Partial<Profile>) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("Unauthorized: Session expired.");
   await updateProfileAction({
@@ -148,13 +154,18 @@ export async function fetchConversations(userId: string): Promise<ConversationSu
     if (!lastByConv.has(m.conversation_id)) lastByConv.set(m.conversation_id, m);
   }
 
-  const { data: reads } = await supabase.from("message_reads").select("message_id").eq("user_id", userId);
+  const { data: reads } = await supabase
+    .from("message_reads")
+    .select("message_id")
+    .eq("user_id", userId);
   const readSet = new Set((reads ?? []).map((r) => r.message_id));
 
   const summaries: ConversationSummary[] = [];
   for (const p of parts ?? []) {
     const cid = p.conversation_id;
-    const otherPart = (allParts ?? []).find((x) => x.conversation_id === cid && x.user_id !== userId);
+    const otherPart = (allParts ?? []).find(
+      (x) => x.conversation_id === cid && x.user_id !== userId,
+    );
     const other = otherPart ? profileMap.get(otherPart.user_id) : undefined;
     if (!other) continue;
     const unread = ((msgs ?? []) as Message[]).filter(
@@ -172,8 +183,13 @@ export async function fetchConversations(userId: string): Promise<ConversationSu
   return summaries;
 }
 
-export async function getOrCreateConversation(_currentUserId: string, otherUserId: string): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
+export async function getOrCreateConversation(
+  _currentUserId: string,
+  otherUserId: string,
+): Promise<string> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("Unauthorized: Session expired.");
   const res = await getOrCreateConversationAction({
@@ -198,8 +214,15 @@ export async function fetchMessages(conversationId: string): Promise<Message[]> 
   return (data ?? []) as Message[];
 }
 
-export async function sendMessage(conversationId: string, senderId: string, content: string, replyTo?: string) {
-  const { data: { session } } = await supabase.auth.getSession();
+export async function sendMessage(
+  conversationId: string,
+  senderId: string,
+  content: string,
+  replyTo?: string,
+) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("Unauthorized: Session expired.");
   await sendMessageAction({
@@ -213,14 +236,18 @@ export async function sendMessage(conversationId: string, senderId: string, cont
 }
 
 export async function editMessage(id: string, content: string) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("Unauthorized: Session expired.");
   await editMessageAction({ data: { token, messageId: id, content } });
 }
 
 export async function deleteMessage(id: string) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("Unauthorized: Session expired.");
   await deleteMessageAction({ data: { token, messageId: id } });
@@ -229,7 +256,9 @@ export async function deleteMessage(id: string) {
 export async function markRead(messageIds: string[], userId: string) {
   if (!messageIds.length) return;
   const rows = messageIds.map((message_id) => ({ message_id, user_id: userId }));
-  await supabase.from("message_reads").upsert(rows, { onConflict: "message_id,user_id", ignoreDuplicates: true });
+  await supabase
+    .from("message_reads")
+    .upsert(rows, { onConflict: "message_id,user_id", ignoreDuplicates: true });
 }
 
 export async function pingPresence(userId: string, online: boolean) {
@@ -243,18 +272,30 @@ export async function pingPresence(userId: string, online: boolean) {
 
 export type UploadedFile = { path: string; name: string; size: number; mime: string };
 
+import { validateFileUpload, sanitizeFileName } from "@/lib/security/file-validation";
+
 export async function uploadAttachment(
   conversationId: string,
   senderId: string,
   file: File,
 ): Promise<UploadedFile> {
-  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const validation = validateFileUpload(file, { maxSizeBytes: 25 * 1024 * 1024 });
+  if (!validation.valid) {
+    throw new Error(validation.error || "Invalid attachment file.");
+  }
+
+  const safeName = sanitizeFileName(file.name);
   const key = `${conversationId}/${senderId}/${crypto.randomUUID()}-${safeName}`;
   const { error } = await supabase.storage
     .from(ATTACHMENTS_BUCKET)
     .upload(key, file, { contentType: file.type || "application/octet-stream", upsert: false });
   if (error) throw error;
-  return { path: key, name: file.name, size: file.size, mime: file.type || "application/octet-stream" };
+  return {
+    path: key,
+    name: file.name,
+    size: file.size,
+    mime: file.type || "application/octet-stream",
+  };
 }
 
 export async function sendFileMessage(
@@ -296,9 +337,7 @@ export async function getAvatarUrl(path: string): Promise<string> {
 }
 
 export async function deleteAvatarFile(path: string): Promise<void> {
-  const { error } = await supabase.storage
-    .from("profile-avatars")
-    .remove([path]);
+  const { error } = await supabase.storage.from("profile-avatars").remove([path]);
   if (error) throw error;
 }
 
@@ -311,12 +350,18 @@ export async function fetchReactionsForConversation(conversationId: string): Pro
     .eq("messages.conversation_id", conversationId);
   if (error) throw error;
   return (data ?? []).map((r) => ({
-    id: r.id, message_id: r.message_id, user_id: r.user_id, emoji: r.emoji, created_at: r.created_at,
+    id: r.id,
+    message_id: r.message_id,
+    user_id: r.user_id,
+    emoji: r.emoji,
+    created_at: r.created_at,
   })) as Reaction[];
 }
 
 export async function toggleReaction(messageId: string, userId: string, emoji: string) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("Unauthorized: Session expired.");
   await toggleReactionAction({ data: { token, messageId, emoji } });
@@ -325,7 +370,10 @@ export async function toggleReaction(messageId: string, userId: string, emoji: s
 /* -------------------- Starred -------------------- */
 
 export async function fetchStarredIds(userId: string): Promise<Set<string>> {
-  const { data } = await supabase.from("starred_messages").select("message_id").eq("user_id", userId);
+  const { data } = await supabase
+    .from("starred_messages")
+    .select("message_id")
+    .eq("user_id", userId);
   return new Set((data ?? []).map((r) => r.message_id));
 }
 
@@ -336,11 +384,13 @@ export async function fetchStarredMessages(userId: string): Promise<Message[]> {
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(100);
-  return ((data ?? []).map((r) => r.messages).filter(Boolean)) as unknown as Message[];
+  return (data ?? []).map((r) => r.messages).filter(Boolean) as unknown as Message[];
 }
 
 export async function toggleStar(messageId: string, userId: string) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("Unauthorized: Session expired.");
   await toggleStarAction({ data: { token, messageId } });
@@ -349,7 +399,9 @@ export async function toggleStar(messageId: string, userId: string) {
 /* -------------------- Forward -------------------- */
 
 export async function forwardMessage(target: Message, toConversationId: string, senderId: string) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error("Unauthorized: Session expired.");
   await forwardMessageAction({ data: { token, messageId: target.id, toConversationId } });
@@ -420,16 +472,9 @@ export async function clearNotification(id: string) {
   await supabase.from("notifications").delete().eq("id", id);
 }
 
-
-
 /* -------------------- Admin Management -------------------- */
 
-export type CompanyRole =
-  | "super_admin"
-  | "hr_admin"
-  | "department_head"
-  | "manager"
-  | "employee";
+export type CompanyRole = "super_admin" | "hr_admin" | "department_head" | "manager" | "employee";
 
 export type AdminUser = Profile & {
   role: CompanyRole;
@@ -462,12 +507,7 @@ export async function fetchAdminUsers(): Promise<AdminUser[]> {
 
   if (rolesError) throw rolesError;
 
-  const roleMap = new Map(
-    (roles ?? []).map((item) => [
-      item.user_id,
-      item.role as CompanyRole,
-    ]),
-  );
+  const roleMap = new Map((roles ?? []).map((item) => [item.user_id, item.role as CompanyRole]));
 
   return (profiles ?? []).map((profile) => ({
     ...(profile as Profile),
@@ -499,10 +539,7 @@ export async function adminUpdateEmployee(input: {
   });
 }
 
-export async function adminUpdateUserRole(
-  targetUserId: string,
-  role: CompanyRole,
-) {
+export async function adminUpdateUserRole(targetUserId: string, role: CompanyRole) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -548,7 +585,15 @@ export type CallRecord = {
   caller_id: string;
   receiver_id: string;
   call_type: "audio" | "video";
-  status: "completed" | "missed" | "declined" | "cancelled" | "failed" | "ringing" | "calling" | "connected";
+  status:
+    | "completed"
+    | "missed"
+    | "declined"
+    | "cancelled"
+    | "failed"
+    | "ringing"
+    | "calling"
+    | "connected";
   started_at: string;
   answered_at: string | null;
   ended_at: string | null;
@@ -556,8 +601,19 @@ export type CallRecord = {
   created_at: string;
 };
 
+interface UntypedQueryBuilder extends Promise<{ error: Error | null }> {
+  select: (cols: string) => UntypedQueryBuilder;
+  eq: (col: string, val: string) => UntypedQueryBuilder;
+  order: (col: string, opts: { ascending: boolean }) => UntypedQueryBuilder;
+  limit: (n: number) => Promise<{ data: unknown[]; error: Error | null }>;
+  insert: (row: Record<string, unknown>) => Promise<{ error: Error | null }>;
+  update: (patch: Record<string, unknown>) => UntypedQueryBuilder;
+}
+
 export async function fetchCalls(conversationId: string): Promise<CallRecord[]> {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await (
+    supabase as unknown as { from: (table: string) => UntypedQueryBuilder }
+  )
     .from("calls")
     .select("*")
     .eq("conversation_id", conversationId)
@@ -572,25 +628,27 @@ export async function createCall(
   conversationId: string,
   callerId: string,
   receiverId: string,
-  callType: "audio" | "video"
+  callType: "audio" | "video",
 ) {
-  const { error } = await (supabase as any).from("calls").insert({
-    id: callId,
-    conversation_id: conversationId,
-    caller_id: callerId,
-    receiver_id: receiverId,
-    call_type: callType,
-    status: "calling",
-    started_at: new Date().toISOString(),
-  });
+  const { error } = await (supabase as unknown as { from: (table: string) => UntypedQueryBuilder })
+    .from("calls")
+    .insert({
+      id: callId,
+      conversation_id: conversationId,
+      caller_id: callerId,
+      receiver_id: receiverId,
+      call_type: callType,
+      status: "calling",
+      started_at: new Date().toISOString(),
+    });
   if (error) throw error;
 }
 
 export async function updateCall(
   callId: string,
-  patch: Partial<Omit<CallRecord, "id" | "created_at">>
+  patch: Partial<Omit<CallRecord, "id" | "created_at">>,
 ) {
-  const { error } = await (supabase as any)
+  const { error } = await (supabase as unknown as { from: (table: string) => UntypedQueryBuilder })
     .from("calls")
     .update(patch)
     .eq("id", callId);

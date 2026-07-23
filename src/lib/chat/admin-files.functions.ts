@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
+import { getAuthenticatedUser } from "@/lib/auth/server-auth";
 
 const adminActionSchema = z.object({
   accessToken: z.string().min(1),
@@ -14,31 +13,8 @@ const adminDownloadActionSchema = z.object({
 
 async function verifySuperAdmin(token: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  
-  const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    throw new Error("Missing Supabase configuration.");
-  }
-  
-  const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-    auth: {
-      storage: undefined,
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
 
-  const { data: { user }, error } = await client.auth.getUser(token);
-  if (error || !user) {
-    throw new Error("Unauthorized: Invalid session.");
-  }
+  const user = await getAuthenticatedUser(token);
 
   const { data: roleData, error: roleError } = await supabaseAdmin
     .from("user_roles")
@@ -63,7 +39,8 @@ export const adminFetchAllFilesAction = createServerFn({ method: "POST" })
 
       const { data: documents, error } = await supabaseAdmin
         .from("department_documents")
-        .select(`
+        .select(
+          `
           id,
           department,
           file_name,
@@ -76,11 +53,12 @@ export const adminFetchAllFilesAction = createServerFn({ method: "POST" })
             full_name,
             email
           )
-        `)
+        `,
+        )
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      
+
       return { documents: documents ?? [] };
     } catch (err) {
       console.error("[Admin Files Server] Error fetching all files:", err);

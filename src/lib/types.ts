@@ -47,7 +47,7 @@ export interface Deal {
   template_snapshot: Template | null;
   ai_summary: string | null;
   ai_talking_points: string[] | null;
-  report: Record<string, any> | null;
+  report: Record<string, unknown> | null;
   prospect_brand: {
     logo?: string | null;
     favicon?: string | null;

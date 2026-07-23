@@ -1,16 +1,33 @@
 ﻿import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2 } from "lucide-react";
-import { fetchDirectory, fetchMyProfile, getOrCreateConversation, type Profile } from "@/lib/chat/queries";
+import {
+  fetchDirectory,
+  fetchMyProfile,
+  getOrCreateConversation,
+  type Profile,
+} from "@/lib/chat/queries";
 import { UserAvatar } from "./user-avatar";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 
 export function NewChatDialog({
-  open, onOpenChange, currentUserId,
-}: { open: boolean; onOpenChange: (v: boolean) => void; currentUserId: string }) {
+  open,
+  onOpenChange,
+  currentUserId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  currentUserId: string;
+}) {
   const [q, setQ] = useState("");
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -43,12 +60,7 @@ export function NewChatDialog({
   const filtered = people.filter((p) => {
     if (!query) return true;
 
-    const hay = [
-      p.full_name,
-      p.email,
-      p.department,
-      p.designation,
-    ]
+    const hay = [p.full_name, p.email, p.department, p.designation]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -112,8 +124,7 @@ export function NewChatDialog({
           ) : (
             departments.map((department) => {
               const isMyDepartment =
-                Boolean(me?.department) &&
-                department === me?.department?.trim();
+                Boolean(me?.department) && department === me?.department?.trim();
 
               return (
                 <section key={department}>

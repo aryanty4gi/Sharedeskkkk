@@ -34,3 +34,14 @@ dist-ssr
 .env.*
 !.env.example
 supabase/.temp/
+
+# Test coverage
+coverage/
+
+# Local development / verification files
+scratch/
+src-files.txt
+src-structure.txt
+supabase-files.txt
+supabase-structure.txt
+test-document.txt

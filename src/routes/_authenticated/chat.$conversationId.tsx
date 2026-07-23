@@ -49,7 +49,10 @@ function ChatDetail() {
       <div className="flex h-full min-h-0 flex-col">
         {/* Mobile back button */}
         <div className="flex items-center gap-2 border-b border-border bg-card px-3 py-2 md:hidden">
-          <Link to="/" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="size-4" /> Chats
           </Link>
         </div>

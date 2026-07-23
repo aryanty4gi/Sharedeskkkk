@@ -12,9 +12,38 @@ interface Message {
   id: string;
 }
 
+interface SpeechRecognitionEvent {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+}
+
+interface ISpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
 const SpeechRecognition =
   typeof window !== "undefined"
-    ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    ? (((window as unknown as Record<string, unknown>).SpeechRecognition ||
+        (window as unknown as Record<string, unknown>).webkitSpeechRecognition) as
+        | (new () => ISpeechRecognition)
+        | null)
     : null;
 
 export function AiAssistant() {
@@ -27,7 +56,7 @@ export function AiAssistant() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<ISpeechRecognition | null>(null);
 
   // Auto-scroll to newest message
   useEffect(() => {
@@ -62,13 +91,13 @@ export function AiAssistant() {
       rec.lang = "en-US";
 
       rec.onstart = () => setIsListening(true);
-      rec.onresult = (event: any) => {
+      rec.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0]?.[0]?.transcript;
         if (transcript) {
           setInputText((prev) => (prev ? `${prev} ${transcript}` : transcript));
         }
       };
-      rec.onerror = (event: any) => {
+      rec.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error("[AI Assistant Speech] Recognition error:", event.error);
         if (event.error === "not-allowed") {
           toast.error("Microphone access denied. Please update your permissions.");
@@ -136,7 +165,10 @@ export function AiAssistant() {
 
     try {
       // 1. Get access token from Supabase session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
       if (sessionError || !session?.access_token) {
         throw new Error("Unauthorized: Please log in again.");
       }
@@ -176,7 +208,8 @@ export function AiAssistant() {
         ]);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "The AI assistant is temporarily unavailable.";
+      const msg =
+        err instanceof Error ? err.message : "The AI assistant is temporarily unavailable.";
       toast.error(msg);
       setMessages((prev) => [
         ...prev,
@@ -235,10 +268,22 @@ export function AiAssistant() {
   };
 
   const suggestions = [
-    { label: "Draft a professional email", text: "Draft a polite email to my manager requesting project feedback." },
-    { label: "Summarize text", text: "Summarize the following notes concisely:\n- [Insert your text here]" },
-    { label: "Explain something", text: "Explain the difference between SQL and NoSQL databases like I am five." },
-    { label: "Brainstorm ideas", text: "Brainstorm 5 creative talking points for an engineering team sync meeting." },
+    {
+      label: "Draft a professional email",
+      text: "Draft a polite email to my manager requesting project feedback.",
+    },
+    {
+      label: "Summarize text",
+      text: "Summarize the following notes concisely:\n- [Insert your text here]",
+    },
+    {
+      label: "Explain something",
+      text: "Explain the difference between SQL and NoSQL databases like I am five.",
+    },
+    {
+      label: "Brainstorm ideas",
+      text: "Brainstorm 5 creative talking points for an engineering team sync meeting.",
+    },
   ];
 
   return (
@@ -253,7 +298,7 @@ export function AiAssistant() {
           "bottom-24 right-4 lg:right-5 lg:top-1/2 lg:-translate-y-1/2 lg:bottom-auto",
           isOpen
             ? "bg-[#D94E3B] rotate-90 shadow-[0_0_20px_rgba(217,78,59,0.35)]"
-            : "bg-gradient-to-br from-[#38A0FF] via-[#356DFF] to-[#6C3FF5] shadow-[0_0_20px_rgba(53,109,255,0.35)]"
+            : "bg-gradient-to-br from-[#38A0FF] via-[#356DFF] to-[#6C3FF5] shadow-[0_0_20px_rgba(53,109,255,0.35)]",
         )}
       >
         {isOpen ? <X className="size-5" /> : <Sparkles className="size-5 animate-pulse" />}
@@ -265,7 +310,7 @@ export function AiAssistant() {
           className={cn(
             "fixed z-40 bg-card border-border shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in slide-in-from-bottom-5",
             // Mobile (Full screen layout with safe margin top), Tablet (bottom right), Desktop (vertical center next to FAB)
-            "inset-x-0 bottom-0 top-[60px] md:top-auto md:bottom-24 md:right-6 md:left-auto md:w-[400px] md:h-[600px] md:max-h-[80vh] md:rounded-2xl md:border lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:right-20 lg:h-[600px] lg:max-h-[85vh]"
+            "inset-x-0 bottom-0 top-[60px] md:top-auto md:bottom-24 md:right-6 md:left-auto md:w-[400px] md:h-[600px] md:max-h-[80vh] md:rounded-2xl md:border lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:right-20 lg:h-[600px] lg:max-h-[85vh]",
           )}
         >
           {/* Header */}
@@ -312,7 +357,9 @@ export function AiAssistant() {
                 <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 mb-4">
                   <Sparkles className="size-7 text-primary" />
                 </div>
-                <h4 className="text-lg font-bold tracking-tight text-foreground">How can I help?</h4>
+                <h4 className="text-lg font-bold tracking-tight text-foreground">
+                  How can I help?
+                </h4>
                 <p className="mt-1 text-sm text-muted-foreground max-w-xs leading-relaxed">
                   Ask ShareDesk AI to write, explain, summarize, brainstorm, or help with your work.
                 </p>
@@ -339,16 +386,20 @@ export function AiAssistant() {
                       "flex flex-col max-w-[85%] rounded-2xl p-3 text-sm shadow-sm relative group",
                       m.role === "user"
                         ? "bg-primary text-primary-foreground ml-auto rounded-tr-none"
-                        : "bg-muted/70 text-foreground mr-auto rounded-tl-none border border-border/60"
+                        : "bg-muted/70 text-foreground mr-auto rounded-tl-none border border-border/60",
                     )}
                   >
-                    <div className="whitespace-pre-wrap leading-relaxed break-words">{m.content}</div>
+                    <div className="whitespace-pre-wrap leading-relaxed break-words">
+                      {m.content}
+                    </div>
 
                     {/* Speaker Button on Assistant Message */}
                     {m.role === "assistant" && !m.content.startsWith("Error:") && (
                       <button
                         onClick={() => handleTTS(m.content, m.id)}
-                        aria-label={activeSpeechId === m.id ? "Stop voice output" : "Read message aloud"}
+                        aria-label={
+                          activeSpeechId === m.id ? "Stop voice output" : "Read message aloud"
+                        }
                         className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1 text-muted-foreground hover:text-foreground rounded bg-card/80 border border-border/40 cursor-pointer"
                       >
                         {activeSpeechId === m.id ? (
@@ -409,7 +460,7 @@ export function AiAssistant() {
                       "flex size-8 items-center justify-center rounded-lg border transition-all cursor-pointer",
                       isListening
                         ? "bg-destructive/15 text-destructive border-destructive/20 animate-pulse"
-                        : "bg-muted/40 hover:bg-muted text-muted-foreground border-border"
+                        : "bg-muted/40 hover:bg-muted text-muted-foreground border-border",
                     )}
                     disabled={isLoading}
                   >
@@ -423,7 +474,7 @@ export function AiAssistant() {
                   aria-label="Send message"
                   className={cn(
                     "flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow transition-all cursor-pointer",
-                    (!inputText.trim() || isLoading) && "opacity-40 cursor-not-allowed"
+                    (!inputText.trim() || isLoading) && "opacity-40 cursor-not-allowed",
                   )}
                   disabled={!inputText.trim() || isLoading}
                 >

@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -8,11 +14,18 @@ import { fetchMyProfile, updateMyProfile } from "@/lib/chat/queries";
 import { UserAvatar } from "./user-avatar";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { validateFileUpload, sanitizeFileName } from "@/lib/security/file-validation";
 import { supabase } from "@/integrations/supabase/client";
 
 export function ProfileDialog({
-  open, onOpenChange, userId,
-}: { open: boolean; onOpenChange: (v: boolean) => void; userId: string }) {
+  open,
+  onOpenChange,
+  userId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  userId: string;
+}) {
   const qc = useQueryClient();
   const { data: profile } = useQuery({
     queryKey: ["profile", userId],
@@ -25,7 +38,7 @@ export function ProfileDialog({
   const [designation, setDesignation] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  
+
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -119,8 +132,8 @@ export function ProfileDialog({
       qc.invalidateQueries({ queryKey: ["department-documents"] });
 
       toast.success("Photo removed");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove photo");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove photo");
     } finally {
       setIsDeleting(false);
     }
@@ -133,20 +146,28 @@ export function ProfileDialog({
 
       // 1. Upload new image first if selected
       if (avatarFile) {
-        const safeName = avatarFile.name.replace(/[^\w.\-]+/g, "_");
+        const validation = validateFileUpload(avatarFile, {
+          maxSizeBytes: 5 * 1024 * 1024,
+          requireImage: true,
+        });
+        if (!validation.valid) {
+          throw new Error(validation.error || "Invalid avatar image format.");
+        }
+
+        const safeName = sanitizeFileName(avatarFile.name);
         const path = `${userId}/${crypto.randomUUID()}-${safeName}`;
-        
+
         const { error: uploadErr } = await supabase.storage
           .from("profile-avatars")
-          .upload(path, avatarFile, { 
+          .upload(path, avatarFile, {
             contentType: avatarFile.type,
-            upsert: false 
+            upsert: false,
           });
-        
+
         if (uploadErr) {
           throw new Error(`Upload failed: ${uploadErr.message}`);
         }
-        
+
         finalAvatarUrl = path;
       }
 
@@ -159,7 +180,8 @@ export function ProfileDialog({
 
       // 3. Delete old storage image if it was replaced and it was a private path
       if (avatarFile && oldAvatarUrl) {
-        const oldIsPrivate = !oldAvatarUrl.startsWith("http://") && !oldAvatarUrl.startsWith("https://");
+        const oldIsPrivate =
+          !oldAvatarUrl.startsWith("http://") && !oldAvatarUrl.startsWith("https://");
         if (oldIsPrivate) {
           const { error: deleteErr } = await supabase.storage
             .from("profile-avatars")
@@ -184,7 +206,7 @@ export function ProfileDialog({
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["directory"] });
       qc.invalidateQueries({ queryKey: ["department-documents"] });
-      
+
       onOpenChange(false);
     },
     onError: (e: Error) => {
@@ -204,12 +226,12 @@ export function ProfileDialog({
         {profile && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <UserAvatar 
-                profile={{ 
-                  ...profile, 
-                  avatar_url: previewUrl || avatarUrl || null 
-                }} 
-                size="xl" 
+              <UserAvatar
+                profile={{
+                  ...profile,
+                  avatar_url: previewUrl || avatarUrl || null,
+                }}
+                size="xl"
               />
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
@@ -241,30 +263,41 @@ export function ProfileDialog({
                       onClick={handleRemovePhoto}
                       disabled={isPending}
                     >
-                      {isDeleting ? (
-                        <Loader2 className="mr-2 size-4 animate-spin" />
-                      ) : null}
+                      {isDeleting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
                       Remove Photo
                     </Button>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
-                  JPG, PNG or WebP. Max 5MB.
-                </p>
+                <p className="text-[11px] text-muted-foreground">JPG, PNG or WebP. Max 5MB.</p>
               </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="name">Full name</Label>
-              <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={100} />
+              <Input
+                id="name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                maxLength={100}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="dept">Department</Label>
-                <Input id="dept" value={department} readOnly className="bg-muted/40 text-muted-foreground cursor-not-allowed" />
+                <Input
+                  id="dept"
+                  value={department}
+                  readOnly
+                  className="bg-muted/40 text-muted-foreground cursor-not-allowed"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="desig">Designation</Label>
-                <Input id="desig" value={designation} readOnly className="bg-muted/40 text-muted-foreground cursor-not-allowed" />
+                <Input
+                  id="desig"
+                  value={designation}
+                  readOnly
+                  className="bg-muted/40 text-muted-foreground cursor-not-allowed"
+                />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -288,7 +321,9 @@ export function ProfileDialog({
           </div>
         )}
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={() => save.mutate()} disabled={isPending}>
             {save.isPending && !avatarFile && <Loader2 className="mr-2 size-4 animate-spin" />}
             Save

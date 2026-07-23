@@ -14,7 +14,12 @@ const MAX_BYTES = 20 * 1024 * 1024;
 type Pending = { file: File; upload?: UploadedFile; error?: string; uploading?: boolean };
 
 export function MessageComposer({
-  conversationId, senderId, onTyping, replyTo, onCancelReply, senderMap,
+  conversationId,
+  senderId,
+  onTyping,
+  replyTo,
+  onCancelReply,
+  senderMap,
 }: {
   conversationId: string;
   senderId: string;
@@ -30,27 +35,32 @@ export function MessageComposer({
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => { if (replyTo) ref.current?.focus(); }, [replyTo]);
+  useEffect(() => {
+    if (replyTo) ref.current?.focus();
+  }, [replyTo]);
 
-  const startUpload = useCallback(async (files: FileList | File[]) => {
-    const arr = Array.from(files);
-    const next: Pending[] = arr.map((file) =>
-      file.size > MAX_BYTES
-        ? { file, error: "Too large (max 20MB)" }
-        : { file, uploading: true },
-    );
-    setPending((p) => [...p, ...next]);
-    for (const item of next) {
-      if (item.error) continue;
-      try {
-        const upload = await uploadAttachment(conversationId, senderId, item.file);
-        setPending((p) => p.map((x) => (x.file === item.file ? { file: x.file, upload } : x)));
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Upload failed";
-        setPending((p) => p.map((x) => (x.file === item.file ? { file: x.file, error: msg } : x)));
+  const startUpload = useCallback(
+    async (files: FileList | File[]) => {
+      const arr = Array.from(files);
+      const next: Pending[] = arr.map((file) =>
+        file.size > MAX_BYTES ? { file, error: "Too large (max 20MB)" } : { file, uploading: true },
+      );
+      setPending((p) => [...p, ...next]);
+      for (const item of next) {
+        if (item.error) continue;
+        try {
+          const upload = await uploadAttachment(conversationId, senderId, item.file);
+          setPending((p) => p.map((x) => (x.file === item.file ? { file: x.file, upload } : x)));
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Upload failed";
+          setPending((p) =>
+            p.map((x) => (x.file === item.file ? { file: x.file, error: msg } : x)),
+          );
+        }
       }
-    }
-  }, [conversationId, senderId]);
+    },
+    [conversationId, senderId],
+  );
 
   const submit = async () => {
     const trimmed = text.trim();
@@ -92,7 +102,10 @@ export function MessageComposer({
   const replyingTo = replyTo ? senderMap.get(replyTo.sender_id) : null;
 
   const onDragEnter = (e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDragging(true); }
+    if (e.dataTransfer.types.includes("Files")) {
+      e.preventDefault();
+      setDragging(true);
+    }
   };
   const onDragOver = (e: React.DragEvent) => {
     if (e.dataTransfer.types.includes("Files")) e.preventDefault();
@@ -108,7 +121,10 @@ export function MessageComposer({
 
   const onPaste = (e: React.ClipboardEvent) => {
     const files = Array.from(e.clipboardData.files ?? []);
-    if (files.length) { e.preventDefault(); void startUpload(files); }
+    if (files.length) {
+      e.preventDefault();
+      void startUpload(files);
+    }
   };
 
   const disabled = busy || pending.some((p) => p.uploading);
@@ -165,7 +181,9 @@ export function MessageComposer({
                   exit={{ opacity: 0, scale: 0.9 }}
                   className={cn(
                     "group relative flex items-center gap-2 rounded-lg border px-2.5 py-1.5 pr-7 text-xs",
-                    p.error ? "border-destructive/50 bg-destructive/10" : "border-border bg-muted/60",
+                    p.error
+                      ? "border-destructive/50 bg-destructive/10"
+                      : "border-border bg-muted/60",
                   )}
                 >
                   {p.uploading ? (
@@ -175,9 +193,7 @@ export function MessageComposer({
                   ) : (
                     <FileText className="size-3.5 text-muted-foreground" />
                   )}
-                  <span className="max-w-[140px] truncate">
-                    {p.error ?? p.file.name}
-                  </span>
+                  <span className="max-w-[140px] truncate">{p.error ?? p.file.name}</span>
                   <button
                     onClick={() => setPending((s) => s.filter((_, j) => j !== i))}
                     className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:bg-background"
@@ -214,7 +230,10 @@ export function MessageComposer({
         <Textarea
           ref={ref}
           value={text}
-          onChange={(e) => { setText(e.target.value); onTyping(); }}
+          onChange={(e) => {
+            setText(e.target.value);
+            onTyping();
+          }}
           onKeyDown={onKey}
           onPaste={onPaste}
           placeholder="Type a message, paste or drop files…"

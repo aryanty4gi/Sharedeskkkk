@@ -36,24 +36,20 @@ import {
   type CompanyRole,
 } from "@/lib/chat/queries";
 
+import { AdminDashboardView } from "@/components/admin/admin-dashboard-view";
+
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-const ROLES: CompanyRole[] = [
-  "super_admin",
-  "hr_admin",
-  "department_head",
-  "manager",
-  "employee",
-];
+const ROLES: CompanyRole[] = ["super_admin", "hr_admin", "department_head", "manager", "employee"];
 
 function AdminPage() {
   const { user } = useCurrentUser();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<AdminUser | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "files">("users");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "users" | "files">("dashboard");
 
   const { data: myRole, isLoading: roleLoading } = useQuery({
     queryKey: ["current-role", user?.id],
@@ -83,7 +79,11 @@ function AdminPage() {
   });
 
   if (roleLoading) {
-    return <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">Checking administrator access...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
+        Checking administrator access...
+      </div>
+    );
   }
 
   if (myRole !== "super_admin" && myRole !== "hr_admin") {
@@ -108,148 +108,170 @@ function AdminPage() {
       </div>
 
       <main className="flex min-h-0 min-w-0 flex-col bg-background">
-      <header className="shrink-0 border-b border-border bg-card">
-        <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button asChild variant="outline" size="sm" className="h-9 px-2.5 sm:px-3">
-              <Link to="/">
-                <ArrowLeft className="mr-1.5 size-4" />
-                <span>Back<span className="hidden sm:inline"> to Workspace</span></span>
-              </Link>
-            </Button>
+        <header className="shrink-0 border-b border-border bg-card">
+          <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Button asChild variant="outline" size="sm" className="h-9 px-2.5 sm:px-3">
+                <Link to="/">
+                  <ArrowLeft className="mr-1.5 size-4" />
+                  <span>
+                    Back<span className="hidden sm:inline"> to Workspace</span>
+                  </span>
+                </Link>
+              </Button>
 
-            <div className="hidden sm:block h-6 w-[1px] bg-border" />
+              <div className="hidden sm:block h-6 w-[1px] bg-border" />
 
-            <div className="flex items-center gap-2">
-              <div className="hidden sm:flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <ShieldCheck className="size-4" />
-              </div>
-              <div>
-                <h1 className="text-sm sm:text-base font-bold tracking-tight">Admin Console</h1>
-                <p className="hidden sm:block text-[10px] text-muted-foreground">ShareDesk Workplace Management</p>
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <ShieldCheck className="size-4" />
+                </div>
+                <div>
+                  <h1 className="text-sm sm:text-base font-bold tracking-tight">Admin Console</h1>
+                  <p className="hidden sm:block text-[10px] text-muted-foreground">
+                    ShareDesk Workplace Management
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="rounded-full border border-primary/20 bg-primary/10 px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-semibold text-primary">
-            {myRole === "super_admin" ? "Super Admin" : "HR Admin"}
+            <div className="rounded-full border border-primary/20 bg-primary/10 px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-semibold text-primary">
+              {myRole === "super_admin" ? "Super Admin" : "HR Admin"}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        {/* Tabs for Super Admin */}
-        {myRole === "super_admin" && (
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          {/* Navigation Tabs */}
           <div className="mb-6 flex border-b border-border">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className={cn(
+                "pb-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer",
+                activeTab === "dashboard"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Dashboard
+            </button>
             <button
               onClick={() => setActiveTab("users")}
               className={cn(
                 "pb-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer",
                 activeTab === "users"
                   ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
               Manage Users
             </button>
-            <button
-              onClick={() => setActiveTab("files")}
-              className={cn(
-                "pb-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer",
-                activeTab === "files"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Department Files
-            </button>
+            {myRole === "super_admin" && (
+              <button
+                onClick={() => setActiveTab("files")}
+                className={cn(
+                  "pb-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer",
+                  activeTab === "files"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Department Files
+              </button>
+            )}
           </div>
-        )}
 
-        {activeTab === "files" && myRole === "super_admin" ? (
-          <DepartmentFilesView />
-        ) : (
-          <>
-            <div className="mb-6 flex items-end justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Users className="size-5 text-primary" />
-                  <h2 className="text-2xl font-bold tracking-tight">Manage Users</h2>
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Manage employee departments, designations, managers and company roles.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-card px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total employees</p>
-                <p className="mt-1 text-2xl font-bold">{users.length}</p>
-              </div>
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
-              <section className="overflow-hidden rounded-2xl border border-border bg-card">
-                <div className="border-b border-border p-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Search name, email, employee ID or department..."
-                      className="pl-9"
-                    />
+          {activeTab === "dashboard" ? (
+            <AdminDashboardView onManageRolesClick={() => setActiveTab("users")} />
+          ) : activeTab === "files" && myRole === "super_admin" ? (
+            <DepartmentFilesView />
+          ) : (
+            <>
+              <div className="mb-6 flex items-end justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Users className="size-5 text-primary" />
+                    <h2 className="text-2xl font-bold tracking-tight">Manage Users</h2>
                   </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Manage employee departments, designations, managers and company roles.
+                  </p>
                 </div>
 
-                <div className="max-h-[calc(100vh-260px)] overflow-y-auto">
-                  {isLoading ? (
-                    <p className="p-8 text-center text-sm text-muted-foreground">Loading employees...</p>
-                  ) : (
-                    filtered.map((employee) => (
-                      <button
-                        key={employee.id}
-                        onClick={() => setSelected(employee)}
-                        className="flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-muted/60"
-                      >
-                        <UserAvatar profile={employee} showStatus />
-
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold">
-                            {employee.full_name || employee.email}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {employee.designation || "No designation"} · {employee.department || "No department"}
-                          </p>
-                        </div>
-
-                        <div className="text-right">
-                          <p className="font-mono text-[10px] font-semibold text-primary">
-                            {employee.employee_id || "NO ID"}
-                          </p>
-                          <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {employee.role.replaceAll("_", " ")}
-                          </p>
-                        </div>
-                      </button>
-                    ))
-                  )}
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Total employees
+                  </p>
+                  <p className="mt-1 text-2xl font-bold">{users.length}</p>
                 </div>
-              </section>
+              </div>
 
-              <EmployeeEditor
-                employee={selected}
-                users={users}
-                canManageRoles={myRole === "super_admin"}
-                currentUserId={user!.id}
-                onSaved={() => {
-                  qc.invalidateQueries({ queryKey: ["admin-users"] });
-                  qc.invalidateQueries({ queryKey: ["directory"] });
-                }}
-              />
-            </div>
-          </>
-        )}
-      </div>
+              <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+                <section className="overflow-hidden rounded-2xl border border-border bg-card">
+                  <div className="border-b border-border p-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search name, email, employee ID or department..."
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="max-h-[calc(100vh-260px)] overflow-y-auto">
+                    {isLoading ? (
+                      <p className="p-8 text-center text-sm text-muted-foreground">
+                        Loading employees...
+                      </p>
+                    ) : (
+                      filtered.map((employee) => (
+                        <button
+                          key={employee.id}
+                          onClick={() => setSelected(employee)}
+                          className="flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-muted/60"
+                        >
+                          <UserAvatar profile={employee} showStatus />
+
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">
+                              {employee.full_name || employee.email}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {employee.designation || "No designation"} ·{" "}
+                              {employee.department || "No department"}
+                            </p>
+                          </div>
+
+                          <div className="text-right">
+                            <p className="font-mono text-[10px] font-semibold text-primary">
+                              {employee.employee_id || "NO ID"}
+                            </p>
+                            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                              {employee.role.replaceAll("_", " ")}
+                            </p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </section>
+
+                <EmployeeEditor
+                  employee={selected}
+                  users={users}
+                  canManageRoles={myRole === "super_admin"}
+                  currentUserId={user!.id}
+                  onSaved={() => {
+                    qc.invalidateQueries({ queryKey: ["admin-users"] });
+                    qc.invalidateQueries({ queryKey: ["directory"] });
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </main>
     </div>
   );
@@ -298,7 +320,6 @@ function EmployeeEditor({
     },
   });
 
-
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!employee) return;
@@ -308,7 +329,7 @@ function EmployeeEditor({
       const confirmed = window.confirm(
         `Permanently delete ${employeeName} (${employee.email})?
 
-This will remove the employee account from ShareDesk and cannot be undone.`
+This will remove the employee account from ShareDesk and cannot be undone.`,
       );
 
       if (!confirmed) return;
@@ -320,11 +341,7 @@ This will remove the employee account from ShareDesk and cannot be undone.`
       onSaved();
     },
     onError: (error) => {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to delete employee."
-      );
+      setMessage(error instanceof Error ? error.message : "Unable to delete employee.");
     },
   });
   useEffect(() => {
@@ -343,22 +360,24 @@ This will remove the employee account from ShareDesk and cannot be undone.`
         <div>
           <Users className="mx-auto size-10 text-muted-foreground" />
           <p className="mt-4 text-sm font-semibold">Select an employee</p>
-          <p className="mt-1 text-xs text-muted-foreground">Employee management details will appear here.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Employee management details will appear here.
+          </p>
         </div>
       </aside>
     );
   }
 
   return (
-    <aside
-      className="rounded-2xl border border-border bg-card p-5"
-    >
+    <aside className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-center gap-3 border-b border-border pb-5">
         <UserAvatar profile={employee} showStatus size="lg" />
         <div className="min-w-0">
           <h3 className="truncate font-bold">{employee.full_name || employee.email}</h3>
           <p className="truncate text-xs text-muted-foreground">{employee.email}</p>
-          <p className="mt-1 font-mono text-[10px] font-semibold text-primary">{employee.employee_id}</p>
+          <p className="mt-1 font-mono text-[10px] font-semibold text-primary">
+            {employee.employee_id}
+          </p>
         </div>
       </div>
 
@@ -423,9 +442,7 @@ This will remove the employee account from ShareDesk and cannot be undone.`
             disabled={deleteMutation.isPending || saveMutation.isPending}
           >
             <Trash2 className="mr-2 size-4" />
-            {deleteMutation.isPending
-              ? "Deleting..."
-              : "Delete employee"}
+            {deleteMutation.isPending ? "Deleting..." : "Delete employee"}
           </Button>
         )}
       </div>
@@ -471,7 +488,7 @@ function DepartmentFilesView() {
       const token = session.data.session?.access_token;
       if (!token) throw new Error("No session found");
       const res = await adminFetchAllFilesAction({
-        data: { accessToken: token }
+        data: { accessToken: token },
       });
       if ("error" in res) throw new Error(res.error);
       return (res.documents as unknown as FileDocument[]) ?? [];
@@ -492,7 +509,7 @@ function DepartmentFilesView() {
   });
 
   // Extract distinct departments from files
-  const departments = Array.from(new Set(data?.map(d => d.department).filter(Boolean) || []));
+  const departments = Array.from(new Set(data?.map((d) => d.department).filter(Boolean) || []));
 
   // Filtered & sorted files
   const filtered = (data ?? [])
@@ -515,7 +532,7 @@ function DepartmentFilesView() {
       if (!token) throw new Error("No active session found");
 
       const res = await adminCreateSignedUrlAction({
-        data: { accessToken: token, filePath }
+        data: { accessToken: token, filePath },
       });
       if ("error" in res) throw new Error(res.error);
       if (!res.signedUrl) throw new Error("Signed URL was not returned");
@@ -550,13 +567,20 @@ function DepartmentFilesView() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="h-9 cursor-pointer">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="h-9 cursor-pointer"
+          >
             <RefreshCw className="mr-1.5 size-3.5" />
             Reload
           </Button>
 
           <div className="rounded-xl border border-border bg-card px-4 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total files</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Total files
+            </p>
             <p className="mt-0.5 text-xl font-bold">{filtered.length}</p>
           </div>
         </div>
@@ -614,7 +638,9 @@ function DepartmentFilesView() {
           <div className="flex flex-col items-center justify-center p-12 text-center">
             <FileText className="size-10 text-muted-foreground mb-3" />
             <p className="font-semibold text-sm">No files found</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Try adjusting your search query or filters.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Try adjusting your search query or filters.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -636,7 +662,7 @@ function DepartmentFilesView() {
                     : "Unknown";
                   const dateStr = new Date(doc.created_at).toLocaleString();
                   const uploader = doc.profiles?.full_name || doc.profiles?.email || "Unknown";
-                  
+
                   return (
                     <tr key={doc.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4 font-medium text-foreground max-w-[240px] truncate">
@@ -646,7 +672,10 @@ function DepartmentFilesView() {
                         </div>
                       </td>
                       <td className="p-4 text-muted-foreground">{doc.department}</td>
-                      <td className="p-4 text-muted-foreground truncate max-w-[180px]" title={uploader}>
+                      <td
+                        className="p-4 text-muted-foreground truncate max-w-[180px]"
+                        title={uploader}
+                      >
                         {uploader}
                       </td>
                       <td className="p-4 text-muted-foreground">{sizeMB}</td>

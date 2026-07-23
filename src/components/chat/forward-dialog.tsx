@@ -2,19 +2,23 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "./user-avatar";
 import {
-  fetchDirectory, forwardMessage, getOrCreateConversation, type Message,
+  fetchDirectory,
+  forwardMessage,
+  getOrCreateConversation,
+  type Message,
 } from "@/lib/chat/queries";
 import { cn } from "@/lib/utils";
 
 export function ForwardDialog({
-  open, onOpenChange, message, currentUserId,
+  open,
+  onOpenChange,
+  message,
+  currentUserId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -33,9 +37,11 @@ export function ForwardDialog({
   const filtered = users.filter((u) => {
     if (!q.trim()) return true;
     const t = q.toLowerCase();
-    return (u.full_name ?? "").toLowerCase().includes(t)
-      || u.email.toLowerCase().includes(t)
-      || (u.department ?? "").toLowerCase().includes(t);
+    return (
+      (u.full_name ?? "").toLowerCase().includes(t) ||
+      u.email.toLowerCase().includes(t) ||
+      (u.department ?? "").toLowerCase().includes(t)
+    );
   });
 
   const send = async (otherId: string) => {
@@ -64,13 +70,18 @@ export function ForwardDialog({
             <div className="line-clamp-2">
               {message.deleted_at
                 ? "Deleted message"
-                : message.content ?? message.file_name ?? "Attachment"}
+                : (message.content ?? message.file_name ?? "Attachment")}
             </div>
           </div>
         )}
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search colleagues…" className="pl-8" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search colleagues…"
+            className="pl-8"
+          />
         </div>
         <div className="max-h-72 overflow-y-auto scrollbar-thin">
           {filtered.length === 0 ? (

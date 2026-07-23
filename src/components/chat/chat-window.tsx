@@ -2,11 +2,19 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  fetchMessages, editMessage, deleteMessage, markRead,
-  fetchReactionsForConversation, toggleReaction,
-  fetchStarredIds, toggleStar,
-  fetchCalls, type CallRecord,
-  type Message, type Profile, type Reaction,
+  fetchMessages,
+  editMessage,
+  deleteMessage,
+  markRead,
+  fetchReactionsForConversation,
+  toggleReaction,
+  fetchStarredIds,
+  toggleStar,
+  fetchCalls,
+  type CallRecord,
+  type Message,
+  type Profile,
+  type Reaction,
 } from "@/lib/chat/queries";
 import { formatLastSeen } from "@/lib/chat/format";
 import { useTyping } from "@/lib/chat/use-typing";
@@ -23,8 +31,14 @@ import { differenceInMinutes, format } from "date-fns";
 type Read = { message_id: string; user_id: string; read_at: string };
 
 export function ChatWindow({
-  conversationId, userId, other,
-}: { conversationId: string; userId: string; other: Profile }) {
+  conversationId,
+  userId,
+  other,
+}: {
+  conversationId: string;
+  userId: string;
+  other: Profile;
+}) {
   const qc = useQueryClient();
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
@@ -106,7 +120,12 @@ export function ChatWindow({
       .channel(`chat:${conversationId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
         () => {
           qc.invalidateQueries({ queryKey: ["messages", conversationId] });
           qc.invalidateQueries({ queryKey: ["conversations"] });
@@ -114,24 +133,27 @@ export function ChatWindow({
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "calls", filter: `conversation_id=eq.${conversationId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "calls",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
         () => {
           qc.invalidateQueries({ queryKey: ["calls", conversationId] });
           qc.invalidateQueries({ queryKey: ["conversations"] });
         },
       )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "message_reads" },
-        () => qc.invalidateQueries({ queryKey: ["reads", conversationId] }),
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "message_reads" }, () =>
+        qc.invalidateQueries({ queryKey: ["reads", conversationId] }),
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "message_reactions" },
-        () => qc.invalidateQueries({ queryKey: ["reactions", conversationId] }),
+      .on("postgres_changes", { event: "*", schema: "public", table: "message_reactions" }, () =>
+        qc.invalidateQueries({ queryKey: ["reactions", conversationId] }),
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [conversationId, qc]);
 
   useEffect(() => {
@@ -149,13 +171,19 @@ export function ChatWindow({
   }, [messages, userId, qc]);
 
   const handleEdit = async (id: string, content: string) => {
-    try { await editMessage(id, content); }
-    catch (e) { toast.error(e instanceof Error ? e.message : "Failed to edit"); }
+    try {
+      await editMessage(id, content);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to edit");
+    }
   };
 
   const handleDelete = async (id: string) => {
-    try { await deleteMessage(id); }
-    catch (e) { toast.error(e instanceof Error ? e.message : "Failed to delete"); }
+    try {
+      await deleteMessage(id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
+    }
   };
 
   const handleReact = async (messageId: string, emoji: string) => {
@@ -175,7 +203,6 @@ export function ChatWindow({
       toast.error(e instanceof Error ? e.message : "Failed");
     }
   };
-
 
   const formatCallDuration = (seconds: number | null): string => {
     if (!seconds || seconds <= 0) return "00 sec";
@@ -220,8 +247,16 @@ export function ChatWindow({
 
     // Combine calls and messages
     const combined = [
-      ...messages.map((m) => ({ type: "msg" as const, data: m, time: new Date(m.created_at).getTime() })),
-      ...calls.map((c) => ({ type: "call" as const, data: c, time: new Date(c.created_at).getTime() })),
+      ...messages.map((m) => ({
+        type: "msg" as const,
+        data: m,
+        time: new Date(m.created_at).getTime(),
+      })),
+      ...calls.map((c) => ({
+        type: "call" as const,
+        data: c,
+        time: new Date(c.created_at).getTime(),
+      })),
     ];
 
     // Sort chronologically
@@ -239,10 +274,11 @@ export function ChatWindow({
       if (item.type === "msg") {
         const m = item.data as Message;
         const next = combined[i + 1];
-        const isLastOfGroup = !next
-          || next.type !== "msg"
-          || (next.data as Message).sender_id !== m.sender_id
-          || differenceInMinutes(new Date(next.time), new Date(item.time)) > 3;
+        const isLastOfGroup =
+          !next ||
+          next.type !== "msg" ||
+          (next.data as Message).sender_id !== m.sender_id ||
+          differenceInMinutes(new Date(next.time), new Date(item.time)) > 3;
         out.push({ type: "msg", m, showAvatar: isLastOfGroup });
       } else {
         const c = item.data as CallRecord;
@@ -279,12 +315,16 @@ export function ChatWindow({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin px-3 py-4 sm:px-6">
         {isLoading ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading…</div>
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            Loading…
+          </div>
         ) : messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <UserAvatar profile={other} size="xl" />
             <p className="mt-4 text-sm font-medium">{other.full_name || other.email}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Say hello to start the conversation.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Say hello to start the conversation.
+            </p>
           </div>
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-1.5">
@@ -318,7 +358,7 @@ export function ChatWindow({
                 }
                 const m = item.m;
                 const isMine = m.sender_id === userId;
-                const replySource = m.reply_to ? msgById.get(m.reply_to) ?? null : null;
+                const replySource = m.reply_to ? (msgById.get(m.reply_to) ?? null) : null;
                 return (
                   <MessageBubble
                     key={m.id}

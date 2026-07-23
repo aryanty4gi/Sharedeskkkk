@@ -7,7 +7,10 @@ import { cn } from "@/lib/utils";
 export const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🎉", "🙏", "🔥"];
 
 export function ReactionBar({
-  reactions, currentUserId, isMine, onToggle,
+  reactions,
+  currentUserId,
+  isMine,
+  onToggle,
 }: {
   reactions: Reaction[];
   currentUserId: string;
@@ -62,7 +65,10 @@ export function ReactionPicker({ onPick }: { onPick: (e: string) => void }) {
           {QUICK_EMOJIS.map((e) => (
             <button
               key={e}
-              onClick={() => { onPick(e); setOpen(false); }}
+              onClick={() => {
+                onPick(e);
+                setOpen(false);
+              }}
               className="rounded-md p-1.5 text-lg leading-none hover:bg-muted"
             >
               {e}

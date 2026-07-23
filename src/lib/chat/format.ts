@@ -1,4 +1,10 @@
-import { formatDistanceToNowStrict, format, isToday, isYesterday, differenceInMinutes } from "date-fns";
+import {
+  formatDistanceToNowStrict,
+  format,
+  isToday,
+  isYesterday,
+  differenceInMinutes,
+} from "date-fns";
 
 export function formatMessageTime(iso: string): string {
   const d = new Date(iso);
@@ -54,33 +60,36 @@ export function isDocumentFile(mime: string | null, filename: string | null): bo
 export function getAttachmentDetailsFromContent(content: string | null): string | null {
   if (!content) return null;
   const trimmed = content.trim();
-  
+
   // Generic filename matching pattern at the end of the text.
   // Matches typical filename characters followed by a dot and a 2-4 character extension.
-  const fileMatch = trimmed.match(/([a-zA-Z0-9_\-\s\.]+\.[a-zA-Z0-9]{2,4})$/);
+  const fileMatch = trimmed.match(/([a-zA-Z0-9_-\s.]+\.[a-zA-Z0-9]{2,4})$/);
   if (!fileMatch) return null;
-  
+
   const parsedFilename = fileMatch[1];
   const prefix = trimmed.slice(0, -parsedFilename.length).trim();
-  
+
   // If there is no prefix, it is exactly a filename.
   if (prefix.length === 0) {
     return parsedFilename;
   }
-  
+
   // If the prefix has no ASCII alphanumeric characters (such as emojis or corrupted UTF-8 bytes),
   // then we classify this as a synthetic attachment caption.
   const hasAlphanumeric = /[a-zA-Z0-9]/.test(prefix);
   if (!hasAlphanumeric) {
     return parsedFilename;
   }
-  
+
   return null;
 }
 
-export function cleanAttachmentContent(content: string | null, fileName: string | null): { hasRealText: boolean; cleanedText: string } {
+export function cleanAttachmentContent(
+  content: string | null,
+  fileName: string | null,
+): { hasRealText: boolean; cleanedText: string } {
   if (!content) return { hasRealText: false, cleanedText: "" };
-  
+
   const trimmedContent = content.trim();
 
   // If fileName is provided, check if the content ends with that exact filename
@@ -130,25 +139,25 @@ export function getSidebarPreview(message: Message | null): SidebarPreview {
 
   // Check if content has synthetic attachment pattern
   const parsedFilename = getAttachmentDetailsFromContent(message.content);
-  const isAttachment = 
-    msgType === "file" || 
-    msgType === "image" || 
+  const isAttachment =
+    msgType === "file" ||
+    msgType === "image" ||
     Boolean(message.file_url || message.file_name) ||
     Boolean(parsedFilename);
 
   if (isAttachment) {
     const resolvedName = (message.file_name || parsedFilename || "").toLowerCase();
-    
-    const isImg = 
-      msgType === "image" || 
-      mime.startsWith("image/") || 
+
+    const isImg =
+      msgType === "image" ||
+      mime.startsWith("image/") ||
       /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(resolvedName);
 
     if (isImg) {
       return { text: "Photo", type: "image" };
     }
 
-    const isDoc = 
+    const isDoc =
       mime === "application/pdf" ||
       mime.includes("word") ||
       mime.includes("excel") ||
@@ -176,4 +185,3 @@ export function getReplyPreview(msg: Message): string {
   }
   return msg.content ?? "";
 }
-

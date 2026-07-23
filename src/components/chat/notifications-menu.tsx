@@ -2,14 +2,10 @@ import { Bell, Check, MessageSquare, Smile, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  clearNotification, markAllNotificationsRead, type Notification,
-} from "@/lib/chat/queries";
+import { clearNotification, markAllNotificationsRead, type Notification } from "@/lib/chat/queries";
 import { useNotifications, requestBrowserNotifications } from "@/lib/chat/use-notifications";
 
 export function NotificationsMenu({ userId }: { userId: string }) {
@@ -19,7 +15,10 @@ export function NotificationsMenu({ userId }: { userId: string }) {
 
   const openConv = async (n: Notification) => {
     if (n.conversation_id) {
-      await navigate({ to: "/chat/$conversationId", params: { conversationId: n.conversation_id } });
+      await navigate({
+        to: "/chat/$conversationId",
+        params: { conversationId: n.conversation_id },
+      });
     }
   };
 
@@ -34,7 +33,11 @@ export function NotificationsMenu({ userId }: { userId: string }) {
   };
 
   return (
-    <Popover onOpenChange={(o) => { if (o) void requestBrowserNotifications(); }}>
+    <Popover
+      onOpenChange={(o) => {
+        if (o) void requestBrowserNotifications();
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           className="relative rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -59,7 +62,9 @@ export function NotificationsMenu({ userId }: { userId: string }) {
         </div>
         <div className="max-h-96 overflow-y-auto scrollbar-thin">
           {notifs.length === 0 ? (
-            <p className="px-4 py-10 text-center text-xs text-muted-foreground">You're all caught up.</p>
+            <p className="px-4 py-10 text-center text-xs text-muted-foreground">
+              You're all caught up.
+            </p>
           ) : (
             <ul>
               {notifs.map((n) => (
@@ -72,9 +77,11 @@ export function NotificationsMenu({ userId }: { userId: string }) {
                   onClick={() => openConv(n)}
                 >
                   <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
-                    {n.kind === "reaction"
-                      ? <Smile className="size-3.5 text-muted-foreground" />
-                      : <MessageSquare className="size-3.5 text-muted-foreground" />}
+                    {n.kind === "reaction" ? (
+                      <Smile className="size-3.5 text-muted-foreground" />
+                    ) : (
+                      <MessageSquare className="size-3.5 text-muted-foreground" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-xs">
@@ -86,7 +93,10 @@ export function NotificationsMenu({ userId }: { userId: string }) {
                     </p>
                   </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); void remove(n.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void remove(n.id);
+                    }}
                     className="opacity-0 transition-opacity group-hover:opacity-100"
                     title="Dismiss"
                   >
