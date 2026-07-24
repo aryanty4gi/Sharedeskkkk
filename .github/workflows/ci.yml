@@ -1,10 +1,10 @@
-name: ShareDesk Enterprise CI/CD Pipeline
+name: ShareDesk Enterprise CI
 
 on:
   push:
-    branches: [ main, master, "feat/*", "fix/*" ]
+    branches: [main]
   pull_request:
-    branches: [ main, master ]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,51 +12,38 @@ concurrency:
 
 jobs:
   validate:
-    name: Build, Lint & Test Verification
+    name: Build, Lint & Test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Bun runtime
+      - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb', '**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Typecheck (tsc --noEmit)
+      - name: TypeScript check
         run: bunx tsc --noEmit
 
-      - name: Code Quality & Linting (ESLint)
-        run: npm run lint
+      - name: Lint
+        run: bun run lint
 
-      - name: Automated Unit & Component Tests (Vitest)
-        run: npm run test:coverage
+      - name: Tests with coverage
+        run: bun run test:coverage
 
-      - name: Build Application (TanStack Start / Vite)
-        run: npm run build
+      - name: Production build
+        run: bun run build
 
-      - name: Upload Test Coverage Artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload coverage
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: code-coverage-report
           path: coverage/
           retention-days: 14
+          if-no-files-found: ignore
