@@ -62,13 +62,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ShareDesk Workplace â€” Nuberg Engineering" },
+      { title: "ShareDesk Workplace - Nuberg Engineering" },
       {
         name: "description",
         content: "Secure internal messaging and document sharing for Nuberg Engineering employees.",
       },
-      { property: "og:title", content: "ShareDesk Workplace â€” Nuberg Engineering" },
-      { name: "twitter:title", content: "ShareDesk Workplace â€” Nuberg Engineering" },
+      { property: "og:title", content: "ShareDesk Workplace - Nuberg Engineering" },
+      { name: "twitter:title", content: "ShareDesk Workplace - Nuberg Engineering" },
       {
         property: "og:description",
         content: "Secure internal messaging and document sharing for Nuberg Engineering employees.",
@@ -81,11 +81,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
     ],
     links: [
-  { rel: "icon", type: "image/png", sizes: "512x512", href: "/favicon.png?v=2" },
-  { rel: "shortcut icon", type: "image/png", href: "/favicon.png?v=2" },
-  { rel: "apple-touch-icon", sizes: "512x512", href: "/favicon.png?v=2" },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: "/favicon.png?v=2" },
+      { rel: "shortcut icon", type: "image/png", href: "/favicon.png?v=2" },
+      { rel: "apple-touch-icon", sizes: "512x512", href: "/favicon.png?v=2" },
 
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       {
         rel: "stylesheet",
@@ -136,4 +136,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-
